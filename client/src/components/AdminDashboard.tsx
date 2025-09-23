@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, Tooltip } from 'recharts';
 import { 
   Download, 
   Settings, 
@@ -195,6 +195,16 @@ export default function AdminDashboard() {
                 height={60}
               />
               <YAxis />
+              <Tooltip 
+                formatter={(value, name) => [`${value} ideas`, 'Submissions']}
+                labelFormatter={(label) => `Time: ${label}`}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--popover))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  color: 'hsl(var(--popover-foreground))'
+                }}
+              />
               <ReferenceLine 
                 y={peakHourData.submissions} 
                 stroke="hsl(var(--destructive))" 
