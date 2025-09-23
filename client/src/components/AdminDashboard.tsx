@@ -23,6 +23,9 @@ import {
   X
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import type { SummitResource, InsertSummitResource } from '@shared/schema';
 import AnalyticsDashboard from './AnalyticsDashboard';
 
 // Mock data for admin - TODO: remove mock functionality
@@ -74,23 +77,87 @@ const peakHourData = hourlySubmissions.reduce((max, current) =>
   current.submissions > max.submissions ? current : max
 , hourlySubmissions[0]);
 
-// Mock summit resources data - TODO: replace with API data
-const mockSummitResources = [
-  { id: '1', title: 'Summit Agenda', url: 'https://example.com/agenda', description: 'Daily schedule and sessions', isActive: 'true', order: '1' },
-  { id: '2', title: 'Meeting Rooms', url: 'https://example.com/rooms', description: 'Reserve conference rooms', isActive: 'true', order: '2' },
-  { id: '3', title: 'Lunch Menu', url: 'https://example.com/lunch', description: 'Today\'s meal options', isActive: 'true', order: '3' },
-  { id: '4', title: 'Evening Activities', url: 'https://example.com/activities', description: 'After-hours events', isActive: 'true', order: '4' },
-  { id: '5', title: 'Hotels & Travel', url: 'https://example.com/hotels', description: 'Accommodation information', isActive: 'true', order: '5' },
-];
-
 export default function AdminDashboard() {
   const { toast } = useToast();
   const [sharedPassword, setSharedPassword] = useState('summit2025');
-  const [summitResources, setSummitResources] = useState(mockSummitResources);
   const [editingResource, setEditingResource] = useState<string | null>(null);
   const [newResource, setNewResource] = useState({ title: '', url: '', description: '' });
   const [showAddForm, setShowAddForm] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+
+  // Fetch summit resources
+  const { data: summitResources = [], isLoading: isLoadingResources, refetch: refetchResources } = useQuery<SummitResource[]>({
+    queryKey: ['/api/summit-resources'],
+    enabled: true,
+  });
+
+  // Summit resources mutations
+  const createResourceMutation = useMutation({
+    mutationFn: (resource: InsertSummitResource) => apiRequest('/api/summit-resources', {
+      method: 'POST',
+      body: resource,
+    }),
+    onSuccess: () => {
+      refetchResources();
+      toast({
+        title: "Resource Added",
+        description: "Summit resource has been successfully added.",
+      });
+      setNewResource({ title: '', url: '', description: '' });
+      setShowAddForm(false);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add summit resource.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateResourceMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<InsertSummitResource> }) => 
+      apiRequest(`/api/summit-resources/${id}`, {
+        method: 'PUT',
+        body: data,
+      }),
+    onSuccess: () => {
+      refetchResources();
+      toast({
+        title: "Resource Updated",
+        description: "Summit resource has been successfully updated.",
+      });
+      setEditingResource(null);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update summit resource.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteResourceMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/summit-resources/${id}`, {
+      method: 'DELETE',
+    }),
+    onSuccess: () => {
+      refetchResources();
+      toast({
+        title: "Resource Deleted",
+        description: "Summit resource has been successfully deleted.",
+        variant: "destructive",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete summit resource.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handlePasswordChange = () => {
     console.log('Changing shared password to:', sharedPassword);
@@ -135,51 +202,30 @@ export default function AdminDashboard() {
       return;
     }
 
-    const resource = {
-      id: Date.now().toString(),
+    const resourceData: InsertSummitResource = {
       ...newResource,
+      description: newResource.description || null,
       isActive: 'true',
       order: (summitResources.length + 1).toString(),
     };
 
-    setSummitResources([...summitResources, resource]);
-    setNewResource({ title: '', url: '', description: '' });
-    setShowAddForm(false);
-    
-    toast({
-      title: "Resource Added",
-      description: "Summit resource has been successfully added.",
-    });
+    createResourceMutation.mutate(resourceData);
   };
 
   const handleEditResource = (id: string, updatedResource: any) => {
-    setSummitResources(summitResources.map(resource => 
-      resource.id === id ? { ...resource, ...updatedResource } : resource
-    ));
-    setEditingResource(null);
-    
-    toast({
-      title: "Resource Updated",
-      description: "Summit resource has been successfully updated.",
-    });
+    updateResourceMutation.mutate({ id, data: updatedResource });
   };
 
   const handleDeleteResource = (id: string) => {
-    setSummitResources(summitResources.filter(resource => resource.id !== id));
-    
-    toast({
-      title: "Resource Deleted",
-      description: "Summit resource has been successfully deleted.",
-      variant: "destructive",
-    });
+    deleteResourceMutation.mutate(id);
   };
 
   const handleToggleActive = (id: string) => {
-    setSummitResources(summitResources.map(resource => 
-      resource.id === id 
-        ? { ...resource, isActive: resource.isActive === 'true' ? 'false' : 'true' }
-        : resource
-    ));
+    const resource = summitResources.find(r => r.id === id);
+    if (resource) {
+      const newActiveState = resource.isActive === 'true' ? 'false' : 'true';
+      updateResourceMutation.mutate({ id, data: { isActive: newActiveState } });
+    }
   };
 
   return (
