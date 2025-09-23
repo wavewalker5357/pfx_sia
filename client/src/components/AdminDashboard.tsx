@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { 
   Download, 
   Settings, 
@@ -13,7 +14,8 @@ import {
   FileText, 
   Shield,
   Activity,
-  AlertCircle 
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AnalyticsDashboard from './AnalyticsDashboard';
@@ -34,6 +36,38 @@ const systemStats = {
   uptime: '99.9%',
   lastBackup: '10 minutes ago',
 };
+
+// 24-hour submission data for admin dashboard - TODO: remove mock functionality
+const hourlySubmissions = [
+  { hour: '00:00', submissions: 0, label: '12 AM' },
+  { hour: '01:00', submissions: 0, label: '1 AM' },
+  { hour: '02:00', submissions: 0, label: '2 AM' },
+  { hour: '03:00', submissions: 0, label: '3 AM' },
+  { hour: '04:00', submissions: 0, label: '4 AM' },
+  { hour: '05:00', submissions: 0, label: '5 AM' },
+  { hour: '06:00', submissions: 1, label: '6 AM' },
+  { hour: '07:00', submissions: 2, label: '7 AM' },
+  { hour: '08:00', submissions: 5, label: '8 AM' },
+  { hour: '09:00', submissions: 12, label: '9 AM' },
+  { hour: '10:00', submissions: 18, label: '10 AM' },
+  { hour: '11:00', submissions: 15, label: '11 AM' },
+  { hour: '12:00', submissions: 8, label: '12 PM' },
+  { hour: '13:00', submissions: 22, label: '1 PM' },
+  { hour: '14:00', submissions: 28, label: '2 PM' },
+  { hour: '15:00', submissions: 35, label: '3 PM' },
+  { hour: '16:00', submissions: 42, label: '4 PM' }, // Peak hour
+  { hour: '17:00', submissions: 38, label: '5 PM' },
+  { hour: '18:00', submissions: 25, label: '6 PM' },
+  { hour: '19:00', submissions: 12, label: '7 PM' },
+  { hour: '20:00', submissions: 8, label: '8 PM' },
+  { hour: '21:00', submissions: 3, label: '9 PM' },
+  { hour: '22:00', submissions: 1, label: '10 PM' },
+  { hour: '23:00', submissions: 0, label: '11 PM' },
+];
+
+const peakHourData = hourlySubmissions.reduce((max, current) => 
+  current.submissions > max.submissions ? current : max
+, hourlySubmissions[0]);
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -90,7 +124,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* System Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold" data-testid="text-total-ideas">
@@ -135,16 +169,54 @@ export default function AdminDashboard() {
             <p className="text-xs text-muted-foreground">Uptime</p>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-xs font-medium" data-testid="text-backup">
-              {systemStats.lastBackup}
-            </div>
-            <p className="text-xs text-muted-foreground">Last Backup</p>
-          </CardContent>
-        </Card>
       </div>
+
+      {/* 24-Hour Submission Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="w-5 h-5" />
+            24-Hour Submission Pattern
+          </CardTitle>
+          <CardDescription>
+            Ideas submitted throughout the day - Peak hour: {peakHourData.label} ({peakHourData.submissions} submissions)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={hourlySubmissions}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="label" 
+                tick={{ fontSize: 12 }}
+                interval={1}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis />
+              <ReferenceLine 
+                y={peakHourData.submissions} 
+                stroke="hsl(var(--destructive))" 
+                strokeDasharray="5 5"
+                label={{ value: "Peak", position: "insideTopRight" }}
+              />
+              <Bar 
+                dataKey="submissions" 
+                fill="hsl(var(--primary))"
+                radius={[2, 2, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="mt-4 p-3 bg-muted rounded-lg">
+            <div className="flex items-center justify-between text-sm">
+              <span>Peak Hour: <strong data-testid="text-peak-hour">{peakHourData.label}</strong></span>
+              <span>Peak Submissions: <strong>{peakHourData.submissions}</strong></span>
+              <span>Total Today: <strong>{hourlySubmissions.reduce((sum, h) => sum + h.submissions, 0)}</strong></span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Admin Controls */}
