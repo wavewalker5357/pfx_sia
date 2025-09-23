@@ -14,6 +14,7 @@ import IdeaBrowser from "@/components/IdeaBrowser";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import AdminDashboard from "@/components/AdminDashboard";
 import ThemeToggle from "@/components/ThemeToggle";
+import SummitResourcesDropdown from "@/components/SummitResourcesDropdown";
 
 type UserType = 'none' | 'attendee' | 'admin';
 
@@ -28,6 +29,7 @@ function AttendeeApp() {
               <p className="text-sm text-muted-foreground">Product & Engineering Summit 2025</p>
             </div>
             <div className="flex items-center gap-2">
+              <SummitResourcesDropdown />
               <ThemeToggle />
               <Button 
                 variant="outline" 
@@ -91,6 +93,7 @@ function AdminApp() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <SummitResourcesDropdown />
               <ThemeToggle />
               <Button 
                 variant="outline" 

@@ -37,3 +37,22 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+// Summit resources schema for admin-manageable links
+export const summitResources = pgTable("summit_resources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  url: text("url").notNull(),
+  description: text("description"),
+  order: varchar("order").notNull().default("0"),
+  isActive: varchar("is_active").notNull().default("true"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSummitResourceSchema = createInsertSchema(summitResources).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSummitResource = z.infer<typeof insertSummitResourceSchema>;
+export type SummitResource = typeof summitResources.$inferSelect;
