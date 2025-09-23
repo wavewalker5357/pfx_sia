@@ -1,4 +1,4 @@
-import { ExternalLink, Calendar, MapPin } from 'lucide-react';
+import { ExternalLink, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -7,17 +7,15 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-
-// Mock data for summit resources - TODO: replace with API data
-const summitResources = [
-  { id: '1', title: 'Summit Agenda', url: 'https://example.com/agenda', description: 'Daily schedule and sessions', isActive: 'true' },
-  { id: '2', title: 'Meeting Rooms', url: 'https://example.com/rooms', description: 'Reserve conference rooms', isActive: 'true' },
-  { id: '3', title: 'Lunch Menu', url: 'https://example.com/lunch', description: 'Today\'s meal options', isActive: 'true' },
-  { id: '4', title: 'Evening Activities', url: 'https://example.com/activities', description: 'After-hours events', isActive: 'true' },
-  { id: '5', title: 'Hotels & Travel', url: 'https://example.com/hotels', description: 'Accommodation information', isActive: 'true' },
-];
+import { useQuery } from '@tanstack/react-query';
+import type { SummitResource } from '@shared/schema';
 
 export default function SummitResourcesDropdown() {
+  const { data: summitResources = [], isLoading } = useQuery<SummitResource[]>({
+    queryKey: ['/api/summit-resources'],
+    enabled: true,
+  });
+
   const activeResources = summitResources.filter(resource => resource.isActive === 'true');
 
   const handleLinkClick = (url: string, title: string) => {
@@ -38,7 +36,11 @@ export default function SummitResourcesDropdown() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        {activeResources.length === 0 ? (
+        {isLoading ? (
+          <DropdownMenuItem disabled>
+            <span className="text-muted-foreground">Loading...</span>
+          </DropdownMenuItem>
+        ) : activeResources.length === 0 ? (
           <DropdownMenuItem disabled>
             <span className="text-muted-foreground">No resources available</span>
           </DropdownMenuItem>
@@ -49,14 +51,26 @@ export default function SummitResourcesDropdown() {
                 onClick={() => handleLinkClick(resource.url, resource.title)}
                 className="flex items-center justify-between cursor-pointer"
                 data-testid={`resource-link-${resource.id}`}
+                asChild
               >
-                <div className="flex flex-col">
-                  <span className="font-medium">{resource.title}</span>
-                  {resource.description && (
-                    <span className="text-xs text-muted-foreground">{resource.description}</span>
-                  )}
-                </div>
-                <ExternalLink className="w-3 h-3 ml-2 opacity-50" />
+                <a
+                  href={resource.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between w-full"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleLinkClick(resource.url, resource.title);
+                  }}
+                >
+                  <div className="flex flex-col">
+                    <span className="font-medium">{resource.title}</span>
+                    {resource.description && (
+                      <span className="text-xs text-muted-foreground">{resource.description}</span>
+                    )}
+                  </div>
+                  <ExternalLink className="w-3 h-3 ml-2 opacity-50" />
+                </a>
               </DropdownMenuItem>
               {index < activeResources.length - 1 && <DropdownMenuSeparator />}
             </div>
