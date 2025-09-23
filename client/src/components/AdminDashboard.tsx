@@ -15,7 +15,12 @@ import {
   Shield,
   Activity,
   AlertCircle,
-  Clock
+  Clock,
+  Plus,
+  Edit,
+  ExternalLink,
+  Save,
+  X
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AnalyticsDashboard from './AnalyticsDashboard';
@@ -69,9 +74,22 @@ const peakHourData = hourlySubmissions.reduce((max, current) =>
   current.submissions > max.submissions ? current : max
 , hourlySubmissions[0]);
 
+// Mock summit resources data - TODO: replace with API data
+const mockSummitResources = [
+  { id: '1', title: 'Summit Agenda', url: 'https://example.com/agenda', description: 'Daily schedule and sessions', isActive: 'true', order: '1' },
+  { id: '2', title: 'Meeting Rooms', url: 'https://example.com/rooms', description: 'Reserve conference rooms', isActive: 'true', order: '2' },
+  { id: '3', title: 'Lunch Menu', url: 'https://example.com/lunch', description: 'Today\'s meal options', isActive: 'true', order: '3' },
+  { id: '4', title: 'Evening Activities', url: 'https://example.com/activities', description: 'After-hours events', isActive: 'true', order: '4' },
+  { id: '5', title: 'Hotels & Travel', url: 'https://example.com/hotels', description: 'Accommodation information', isActive: 'true', order: '5' },
+];
+
 export default function AdminDashboard() {
   const { toast } = useToast();
   const [sharedPassword, setSharedPassword] = useState('summit2025');
+  const [summitResources, setSummitResources] = useState(mockSummitResources);
+  const [editingResource, setEditingResource] = useState<string | null>(null);
+  const [newResource, setNewResource] = useState({ title: '', url: '', description: '' });
+  const [showAddForm, setShowAddForm] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   const handlePasswordChange = () => {
@@ -105,6 +123,63 @@ export default function AdminDashboard() {
       description: "Selected ideas have been deleted.",
       variant: "destructive",
     });
+  };
+
+  const handleAddResource = () => {
+    if (!newResource.title || !newResource.url) {
+      toast({
+        title: "Validation Error",
+        description: "Title and URL are required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const resource = {
+      id: Date.now().toString(),
+      ...newResource,
+      isActive: 'true',
+      order: (summitResources.length + 1).toString(),
+    };
+
+    setSummitResources([...summitResources, resource]);
+    setNewResource({ title: '', url: '', description: '' });
+    setShowAddForm(false);
+    
+    toast({
+      title: "Resource Added",
+      description: "Summit resource has been successfully added.",
+    });
+  };
+
+  const handleEditResource = (id: string, updatedResource: any) => {
+    setSummitResources(summitResources.map(resource => 
+      resource.id === id ? { ...resource, ...updatedResource } : resource
+    ));
+    setEditingResource(null);
+    
+    toast({
+      title: "Resource Updated",
+      description: "Summit resource has been successfully updated.",
+    });
+  };
+
+  const handleDeleteResource = (id: string) => {
+    setSummitResources(summitResources.filter(resource => resource.id !== id));
+    
+    toast({
+      title: "Resource Deleted",
+      description: "Summit resource has been successfully deleted.",
+      variant: "destructive",
+    });
+  };
+
+  const handleToggleActive = (id: string) => {
+    setSummitResources(summitResources.map(resource => 
+      resource.id === id 
+        ? { ...resource, isActive: resource.isActive === 'true' ? 'false' : 'true' }
+        : resource
+    ));
   };
 
   return (
@@ -351,6 +426,153 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Summit Resources Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5" />
+            Summit Resources
+          </CardTitle>
+          <CardDescription>Manage links displayed in the Summit Resources dropdown</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Add New Resource Form */}
+          {showAddForm && (
+            <div className="p-4 border rounded-lg bg-muted/50 space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="new-title">Title *</Label>
+                  <Input
+                    id="new-title"
+                    value={newResource.title}
+                    onChange={(e) => setNewResource({ ...newResource, title: e.target.value })}
+                    placeholder="e.g., Summit Agenda"
+                    data-testid="input-resource-title"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="new-url">URL *</Label>
+                  <Input
+                    id="new-url"
+                    value={newResource.url}
+                    onChange={(e) => setNewResource({ ...newResource, url: e.target.value })}
+                    placeholder="https://example.com/agenda"
+                    data-testid="input-resource-url"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="new-description">Description</Label>
+                <Input
+                  id="new-description"
+                  value={newResource.description}
+                  onChange={(e) => setNewResource({ ...newResource, description: e.target.value })}
+                  placeholder="Brief description of the resource"
+                  data-testid="input-resource-description"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleAddResource} data-testid="button-save-resource">
+                  <Save className="w-4 h-4 mr-2" />
+                  Save
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setNewResource({ title: '', url: '', description: '' });
+                  }}
+                  data-testid="button-cancel-resource"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Add New Resource Button */}
+          {!showAddForm && (
+            <Button 
+              onClick={() => setShowAddForm(true)}
+              className="w-full"
+              data-testid="button-add-resource"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add New Resource
+            </Button>
+          )}
+
+          {/* Resources List */}
+          <div className="space-y-3">
+            {summitResources.map((resource) => (
+              <div key={resource.id} className="flex items-center justify-between p-3 border rounded-lg">
+                {editingResource === resource.id ? (
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2 mr-4">
+                    <Input
+                      value={resource.title}
+                      onChange={(e) => handleEditResource(resource.id, { title: e.target.value })}
+                      placeholder="Title"
+                    />
+                    <Input
+                      value={resource.url}
+                      onChange={(e) => handleEditResource(resource.id, { url: e.target.value })}
+                      placeholder="URL"
+                    />
+                    <Input
+                      value={resource.description || ''}
+                      onChange={(e) => handleEditResource(resource.id, { description: e.target.value })}
+                      placeholder="Description"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{resource.title}</span>
+                      <ExternalLink className="w-3 h-3 opacity-50" />
+                      {resource.isActive === 'false' && (
+                        <Badge variant="secondary" className="text-xs">Inactive</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{resource.url}</p>
+                    {resource.description && (
+                      <p className="text-xs text-muted-foreground">{resource.description}</p>
+                    )}
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleToggleActive(resource.id)}
+                    data-testid={`button-toggle-${resource.id}`}
+                  >
+                    {resource.isActive === 'true' ? 'Disable' : 'Enable'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEditingResource(editingResource === resource.id ? null : resource.id)}
+                    data-testid={`button-edit-${resource.id}`}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDeleteResource(resource.id)}
+                    data-testid={`button-delete-${resource.id}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* System Alerts */}
       <Card>
