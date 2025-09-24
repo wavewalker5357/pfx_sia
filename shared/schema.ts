@@ -170,3 +170,40 @@ export const insertHeaderSettingsSchema = createInsertSchema(headerSettings).omi
 
 export type InsertHeaderSettings = z.infer<typeof insertHeaderSettingsSchema>;
 export type HeaderSettings = typeof headerSettings.$inferSelect;
+
+// Kanban categories schema for board view organization
+export const kanbanCategories = pgTable("kanban_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(), // Unique identifier for category (e.g., "ai_story", "ai_idea")
+  title: text("title").notNull(), // Display title (e.g., "AI Story", "AI Idea")
+  color: text("color").notNull().default("#3b82f6"), // Hex color for category
+  order: varchar("order").notNull().default("0"), // Display order in kanban board
+  isActive: varchar("is_active").notNull().default("true"), // Whether category is enabled
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertKanbanCategorySchema = createInsertSchema(kanbanCategories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertKanbanCategory = z.infer<typeof insertKanbanCategorySchema>;
+export type KanbanCategory = typeof kanbanCategories.$inferSelect;
+
+// View settings schema for default view preferences
+export const viewSettings = pgTable("view_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  defaultView: text("default_view").notNull().default("list"), // "list" or "board"
+  showBoardByDefault: varchar("show_board_by_default").notNull().default("false"), // For end users
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertViewSettingsSchema = createInsertSchema(viewSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertViewSettings = z.infer<typeof insertViewSettingsSchema>;
+export type ViewSettings = typeof viewSettings.$inferSelect;

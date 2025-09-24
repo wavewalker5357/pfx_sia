@@ -7,7 +7,9 @@ import {
   insertFormFieldSchema, 
   insertFormFieldOptionSchema, 
   insertIdeaDynamicFieldSchema,
-  insertHeaderSettingsSchema
+  insertHeaderSettingsSchema,
+  insertKanbanCategorySchema,
+  insertViewSettingsSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -382,6 +384,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.error("Error updating header settings:", error);
         res.status(500).json({ error: "Failed to update header settings" });
+      }
+    }
+  });
+
+  // Kanban Categories API routes
+  
+  // GET /api/kanban-categories - Get all kanban categories
+  app.get("/api/kanban-categories", async (req, res) => {
+    try {
+      const categories = await storage.getKanbanCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching kanban categories:", error);
+      res.status(500).json({ error: "Failed to fetch kanban categories" });
+    }
+  });
+
+  // POST /api/kanban-categories - Create new kanban category
+  app.post("/api/kanban-categories", async (req, res) => {
+    try {
+      const validatedData = insertKanbanCategorySchema.parse(req.body);
+      const category = await storage.createKanbanCategory(validatedData);
+      res.status(201).json(category);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error creating kanban category:", error);
+        res.status(500).json({ error: "Failed to create kanban category" });
+      }
+    }
+  });
+
+  // GET /api/kanban-categories/:id - Get specific kanban category
+  app.get("/api/kanban-categories/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const category = await storage.getKanbanCategory(id);
+      
+      if (!category) {
+        return res.status(404).json({ error: "Kanban category not found" });
+      }
+      
+      res.json(category);
+    } catch (error) {
+      console.error("Error fetching kanban category:", error);
+      res.status(500).json({ error: "Failed to fetch kanban category" });
+    }
+  });
+
+  // PUT /api/kanban-categories/:id - Update kanban category
+  app.put("/api/kanban-categories/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertKanbanCategorySchema.partial().parse(req.body);
+      const category = await storage.updateKanbanCategory(id, validatedData);
+      
+      if (!category) {
+        return res.status(404).json({ error: "Kanban category not found" });
+      }
+      
+      res.json(category);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error updating kanban category:", error);
+        res.status(500).json({ error: "Failed to update kanban category" });
+      }
+    }
+  });
+
+  // DELETE /api/kanban-categories/:id - Delete kanban category
+  app.delete("/api/kanban-categories/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteKanbanCategory(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Kanban category not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting kanban category:", error);
+      res.status(500).json({ error: "Failed to delete kanban category" });
+    }
+  });
+
+  // View Settings API routes
+  
+  // GET /api/view-settings - Get view settings
+  app.get("/api/view-settings", async (req, res) => {
+    try {
+      const settings = await storage.getViewSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching view settings:", error);
+      res.status(500).json({ error: "Failed to fetch view settings" });
+    }
+  });
+
+  // POST /api/view-settings - Create view settings
+  app.post("/api/view-settings", async (req, res) => {
+    try {
+      const validatedData = insertViewSettingsSchema.parse(req.body);
+      const settings = await storage.createViewSettings(validatedData);
+      res.status(201).json(settings);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error creating view settings:", error);
+        res.status(500).json({ error: "Failed to create view settings" });
+      }
+    }
+  });
+
+  // PUT /api/view-settings/:id - Update view settings
+  app.put("/api/view-settings/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertViewSettingsSchema.partial().parse(req.body);
+      const settings = await storage.updateViewSettings(id, validatedData);
+      
+      if (!settings) {
+        return res.status(404).json({ error: "View settings not found" });
+      }
+      
+      res.json(settings);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error updating view settings:", error);
+        res.status(500).json({ error: "Failed to update view settings" });
       }
     }
   });
