@@ -15,10 +15,21 @@ const typeColors = {
   'AI Solution': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
 };
 
-export default function IdeaBrowser() {
-  const [searchTerm, setSearchTerm] = useState('');
+interface IdeaBrowserProps {
+  searchTerm?: string;
+  componentFilter?: string;
+  tagFilter?: string;
+}
+
+export default function IdeaBrowser({ searchTerm = '', componentFilter = '', tagFilter = '' }: IdeaBrowserProps) {
+  const [localSearchTerm, setLocalSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const [filterComponent, setFilterComponent] = useState('all');
+  const [localFilterComponent, setLocalFilterComponent] = useState('all');
+
+  // Use props if provided, otherwise use local state for backward compatibility
+  const effectiveSearchTerm = searchTerm || localSearchTerm;
+  const effectiveComponentFilter = componentFilter !== undefined ? componentFilter : (localFilterComponent === 'all' ? '' : localFilterComponent);
+  const effectiveTagFilter = tagFilter;
 
   // Fetch ideas with dynamic fields from API
   const { data: ideas = [], isLoading, error } = useQuery<IdeaWithFields[]>({
@@ -33,13 +44,15 @@ export default function IdeaBrowser() {
   });
 
   const filteredIdeas = ideas.filter(idea => {
-    const matchesSearch = idea.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         idea.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         idea.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = !effectiveSearchTerm || 
+      idea.title.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
+      idea.description.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
+      idea.name.toLowerCase().includes(effectiveSearchTerm.toLowerCase());
     const matchesType = filterType === 'all' || idea.type === filterType;
-    const matchesComponent = filterComponent === 'all' || idea.component === filterComponent;
+    const matchesComponent = !effectiveComponentFilter || idea.component === effectiveComponentFilter;
+    const matchesTag = !effectiveTagFilter || idea.tag === effectiveTagFilter;
     
-    return matchesSearch && matchesType && matchesComponent;
+    return matchesSearch && matchesType && matchesComponent && matchesTag;
   });
 
   const formatTime = (dateInput: string | Date) => {
@@ -88,8 +101,8 @@ export default function IdeaBrowser() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
                 placeholder="Search ideas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={effectiveSearchTerm}
+                onChange={(e) => setLocalSearchTerm(e.target.value)}
                 className="pl-10"
                 data-testid="input-search"
               />
@@ -108,7 +121,7 @@ export default function IdeaBrowser() {
               </SelectContent>
             </Select>
 
-            <Select value={filterComponent} onValueChange={setFilterComponent}>
+            <Select value={effectiveComponentFilter} onValueChange={setLocalFilterComponent}>
               <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-filter-component">
                 <SelectValue />
               </SelectTrigger>
@@ -132,9 +145,9 @@ export default function IdeaBrowser() {
               variant="outline" 
               size="sm" 
               onClick={() => {
-                setSearchTerm('');
+                setLocalSearchTerm('');
                 setFilterType('all');
-                setFilterComponent('all');
+                setLocalFilterComponent('all');
               }}
               data-testid="button-clear-filters"
             >

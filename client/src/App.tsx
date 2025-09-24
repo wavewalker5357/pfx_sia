@@ -10,7 +10,7 @@ import { LogOut, BarChart3, Plus, Search, Shield } from "lucide-react";
 
 import PasswordGate from "@/components/PasswordGate";
 import IdeaSubmissionForm from "@/components/IdeaSubmissionForm";
-import IdeaBrowser from "@/components/IdeaBrowser";
+import IdeaViewer from "@/components/IdeaViewer";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import AdminDashboard from "@/components/AdminDashboard";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -46,7 +46,7 @@ function AttendeeApp() {
           </TabsContent>
 
           <TabsContent value="browse" className="space-y-6">
-            <IdeaBrowser />
+            <IdeaViewer />
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
