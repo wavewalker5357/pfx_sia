@@ -10,7 +10,9 @@ import {
   type FormFieldOption,
   type InsertFormFieldOption,
   type IdeaDynamicField,
-  type InsertIdeaDynamicField
+  type InsertIdeaDynamicField,
+  type HeaderSettings,
+  type InsertHeaderSettings
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -55,6 +57,11 @@ export interface IStorage {
   createIdeaDynamicField(field: InsertIdeaDynamicField): Promise<IdeaDynamicField>;
   updateIdeaDynamicField(id: string, updates: Partial<InsertIdeaDynamicField>): Promise<IdeaDynamicField | undefined>;
   deleteIdeaDynamicField(id: string): Promise<boolean>;
+
+  // Header Settings CRUD
+  getHeaderSettings(): Promise<HeaderSettings | undefined>;
+  createHeaderSettings(settings: InsertHeaderSettings): Promise<HeaderSettings>;
+  updateHeaderSettings(id: string, updates: Partial<InsertHeaderSettings>): Promise<HeaderSettings | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -64,6 +71,7 @@ export class MemStorage implements IStorage {
   private formFields: Map<string, FormField>;
   private formFieldOptions: Map<string, FormFieldOption>;
   private ideaDynamicFields: Map<string, IdeaDynamicField>;
+  private headerSettings: HeaderSettings | undefined;
 
   constructor() {
     this.users = new Map();
@@ -72,11 +80,13 @@ export class MemStorage implements IStorage {
     this.formFields = new Map();
     this.formFieldOptions = new Map();
     this.ideaDynamicFields = new Map();
+    this.headerSettings = undefined;
     
     // Initialize with default data
     this.initializeDefaultIdeas();
     this.initializeDefaultResources();
     this.initializeDefaultFormFields();
+    this.initializeDefaultHeaderSettings();
   }
 
   private initializeDefaultIdeas() {
@@ -477,6 +487,92 @@ export class MemStorage implements IStorage {
 
   async deleteIdeaDynamicField(id: string): Promise<boolean> {
     return this.ideaDynamicFields.delete(id);
+  }
+
+  private initializeDefaultHeaderSettings() {
+    const defaultSettings: HeaderSettings = {
+      id: 'header_1',
+      attendeeTitle: 'AI Summit Ideas',
+      attendeeSubtitle: 'Product & Engineering Summit 2025',
+      adminTitle: 'AI Summit Admin',
+      adminSubtitle: 'Platform Management Dashboard',
+      summitResourcesLabel: 'Summit Resources',
+      exitButtonLabel: 'Exit',
+      logoutButtonLabel: 'Logout',
+      backgroundColor: '#ffffff',
+      textColor: '#000000',
+      titleColor: '#000000',
+      subtitleColor: '#666666',
+      borderColor: '#e5e7eb',
+      backgroundImage: null,
+      backgroundImageOpacity: '0.1',
+      backgroundImagePosition: 'center',
+      backgroundImageSize: 'cover',
+      headerHeight: 'auto',
+      paddingX: '1rem',
+      paddingY: '1rem',
+      mobileBreakpoint: '768px',
+      mobileTitleSize: '1.5rem',
+      desktopTitleSize: '2rem',
+      isActive: 'true',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    this.headerSettings = defaultSettings;
+  }
+
+  // Header Settings methods
+  async getHeaderSettings(): Promise<HeaderSettings | undefined> {
+    return this.headerSettings;
+  }
+
+  async createHeaderSettings(insertSettings: InsertHeaderSettings): Promise<HeaderSettings> {
+    const id = randomUUID();
+    const settings: HeaderSettings = {
+      // Set defaults for required fields
+      attendeeTitle: 'AI Summit Ideas',
+      attendeeSubtitle: 'Product & Engineering Summit 2025',
+      adminTitle: 'AI Summit Admin',
+      adminSubtitle: 'Platform Management Dashboard',
+      summitResourcesLabel: 'Summit Resources',
+      exitButtonLabel: 'Exit',
+      logoutButtonLabel: 'Logout',
+      backgroundColor: '#ffffff',
+      textColor: '#000000',
+      titleColor: '#000000',
+      subtitleColor: '#666666',
+      borderColor: '#e5e7eb',
+      backgroundImageOpacity: '0.1',
+      backgroundImagePosition: 'center',
+      backgroundImageSize: 'cover',
+      headerHeight: 'auto',
+      paddingX: '1rem',
+      paddingY: '1rem',
+      mobileBreakpoint: '768px',
+      mobileTitleSize: '1.5rem',
+      desktopTitleSize: '2rem',
+      isActive: 'true',
+      // Override with provided values
+      ...insertSettings,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.headerSettings = settings;
+    return settings;
+  }
+
+  async updateHeaderSettings(id: string, updates: Partial<InsertHeaderSettings>): Promise<HeaderSettings | undefined> {
+    if (!this.headerSettings || this.headerSettings.id !== id) return undefined;
+    
+    const updated: HeaderSettings = { 
+      ...this.headerSettings, 
+      ...updates,
+      updatedAt: new Date()
+    };
+    this.headerSettings = updated;
+    return updated;
   }
 }
 

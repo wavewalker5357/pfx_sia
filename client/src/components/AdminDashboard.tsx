@@ -23,13 +23,15 @@ import {
   X,
   BarChart3,
   Users,
-  FormInput
+  FormInput,
+  Palette
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import type { SummitResource, InsertSummitResource, FormField, InsertFormField, FormFieldOption, InsertFormFieldOption } from '@shared/schema';
 import AnalyticsDashboard from './AnalyticsDashboard';
+import { HeaderSettingsAdmin } from './HeaderSettingsAdmin';
 
 // Mock data for admin - TODO: remove mock functionality
 const recentActivity = [
@@ -468,6 +470,20 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-2">
               <ExternalLink className="w-4 h-4" />
               Summit Resources
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('header-settings')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'header-settings'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+            }`}
+            data-testid="tab-header-settings"
+          >
+            <div className="flex items-center gap-2">
+              <Palette className="w-4 h-4" />
+              Header Settings
             </div>
           </button>
         </nav>
@@ -1247,12 +1263,12 @@ export default function AdminDashboard() {
                         name: newFieldForm.name,
                         label: newFieldForm.label,
                         type: newFieldForm.type,
-                        required: newFieldForm.required,
+                        required: newFieldForm.required ? 'true' : 'false',
                         placeholder: newFieldForm.placeholder || null,
                         helpText: newFieldForm.helpText || null,
-                        allowUserAdditions: newFieldForm.allowUserAdditions,
+                        allowUserAdditions: newFieldForm.allowUserAdditions ? 'true' : 'false',
                         order: formFields.length.toString(),
-                        isActive: true
+                        isActive: 'true'
                       });
                     }}
                     disabled={!newFieldForm.name || !newFieldForm.label || createFieldMutation.isPending}
@@ -1608,6 +1624,13 @@ export default function AdminDashboard() {
               )}
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Header Settings Tab */}
+      {activeTab === 'header-settings' && (
+        <div className="space-y-6">
+          <HeaderSettingsAdmin />
         </div>
       )}
     </div>

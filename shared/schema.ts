@@ -120,3 +120,53 @@ export type IdeaDynamicField = typeof ideaDynamicFields.$inferSelect;
 export type IdeaWithFields = Idea & {
   dynamicFields: IdeaDynamicField[];
 };
+
+// Header customization schema for admin-configurable header settings
+export const headerSettings = pgTable("header_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // Text content
+  attendeeTitle: text("attendee_title").notNull().default("AI Summit Ideas"),
+  attendeeSubtitle: text("attendee_subtitle").notNull().default("Product & Engineering Summit 2025"),
+  adminTitle: text("admin_title").notNull().default("AI Summit Admin"),
+  adminSubtitle: text("admin_subtitle").notNull().default("Platform Management Dashboard"),
+  summitResourcesLabel: text("summit_resources_label").notNull().default("Summit Resources"),
+  exitButtonLabel: text("exit_button_label").notNull().default("Exit"),
+  logoutButtonLabel: text("logout_button_label").notNull().default("Logout"),
+  
+  // Visual styling
+  backgroundColor: text("background_color").default("#ffffff"),
+  textColor: text("text_color").default("#000000"),
+  titleColor: text("title_color").default("#000000"),
+  subtitleColor: text("subtitle_color").default("#666666"),
+  borderColor: text("border_color").default("#e5e7eb"),
+  
+  // Background image
+  backgroundImage: text("background_image"),
+  backgroundImageOpacity: varchar("background_image_opacity").notNull().default("0.1"),
+  backgroundImagePosition: text("background_image_position").notNull().default("center"),
+  backgroundImageSize: text("background_image_size").notNull().default("cover"),
+  
+  // Layout settings
+  headerHeight: text("header_height").notNull().default("auto"),
+  paddingX: text("padding_x").notNull().default("1rem"),
+  paddingY: text("padding_y").notNull().default("1rem"),
+  
+  // Responsive settings
+  mobileBreakpoint: text("mobile_breakpoint").notNull().default("768px"),
+  mobileTitleSize: text("mobile_title_size").notNull().default("1.5rem"),
+  desktopTitleSize: text("desktop_title_size").notNull().default("2rem"),
+  
+  // State
+  isActive: varchar("is_active").notNull().default("true"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertHeaderSettingsSchema = createInsertSchema(headerSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertHeaderSettings = z.infer<typeof insertHeaderSettingsSchema>;
+export type HeaderSettings = typeof headerSettings.$inferSelect;

@@ -10,7 +10,12 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import type { SummitResource } from '@shared/schema';
 
-export default function SummitResourcesDropdown() {
+interface SummitResourcesDropdownProps {
+  className?: string;
+  customLabel?: string;
+}
+
+export function SummitResourcesDropdown({ className, customLabel }: SummitResourcesDropdownProps) {
   const { data: summitResources = [], isLoading } = useQuery<SummitResource[]>({
     queryKey: ['/api/summit-resources'],
     enabled: true,
@@ -29,10 +34,10 @@ export default function SummitResourcesDropdown() {
           variant="outline" 
           size="sm"
           data-testid="button-summit-resources"
-          className="gap-2"
+          className={`gap-2 ${className || ''}`}
         >
           <Calendar className="w-4 h-4" />
-          Summit Resources
+          {customLabel || 'Summit Resources'}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
@@ -80,3 +85,6 @@ export default function SummitResourcesDropdown() {
     </DropdownMenu>
   );
 }
+
+// Export as default for backward compatibility
+export default SummitResourcesDropdown;

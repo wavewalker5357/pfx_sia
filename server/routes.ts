@@ -6,7 +6,8 @@ import {
   insertIdeaSchema,
   insertFormFieldSchema, 
   insertFormFieldOptionSchema, 
-  insertIdeaDynamicFieldSchema 
+  insertIdeaDynamicFieldSchema,
+  insertHeaderSettingsSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -327,6 +328,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.error("Error creating idea dynamic field:", error);
         res.status(500).json({ error: "Failed to create idea dynamic field" });
+      }
+    }
+  });
+
+  // Header Settings API routes
+  
+  // GET /api/header-settings - Get header settings
+  app.get("/api/header-settings", async (req, res) => {
+    try {
+      const settings = await storage.getHeaderSettings();
+      if (!settings) {
+        return res.status(404).json({ error: "Header settings not found" });
+      }
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching header settings:", error);
+      res.status(500).json({ error: "Failed to fetch header settings" });
+    }
+  });
+
+  // POST /api/header-settings - Create header settings
+  app.post("/api/header-settings", async (req, res) => {
+    try {
+      const validatedData = insertHeaderSettingsSchema.parse(req.body);
+      const settings = await storage.createHeaderSettings(validatedData);
+      res.status(201).json(settings);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error creating header settings:", error);
+        res.status(500).json({ error: "Failed to create header settings" });
+      }
+    }
+  });
+
+  // PUT /api/header-settings/:id - Update header settings
+  app.put("/api/header-settings/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertHeaderSettingsSchema.partial().parse(req.body);
+      const settings = await storage.updateHeaderSettings(id, validatedData);
+      
+      if (!settings) {
+        return res.status(404).json({ error: "Header settings not found" });
+      }
+      
+      res.json(settings);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error updating header settings:", error);
+        res.status(500).json({ error: "Failed to update header settings" });
       }
     }
   });

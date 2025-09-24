@@ -15,35 +15,14 @@ import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import AdminDashboard from "@/components/AdminDashboard";
 import ThemeToggle from "@/components/ThemeToggle";
 import SummitResourcesDropdown from "@/components/SummitResourcesDropdown";
+import { AppHeader } from "@/components/AppHeader";
 
 type UserType = 'none' | 'attendee' | 'admin';
 
 function AttendeeApp() {
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">AI Summit Ideas</h1>
-              <p className="text-sm text-muted-foreground">Product & Engineering Summit 2025</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <SummitResourcesDropdown />
-              <ThemeToggle />
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => window.location.reload()}
-                data-testid="button-logout"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Exit
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader isAdmin={false} />
 
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="submit" className="space-y-6">
@@ -82,32 +61,7 @@ function AttendeeApp() {
 function AdminApp() {
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Shield className="w-6 h-6 text-primary" />
-              <div>
-                <h1 className="text-2xl font-bold">AI Summit Admin</h1>
-                <p className="text-sm text-muted-foreground">Platform Management Dashboard</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <SummitResourcesDropdown />
-              <ThemeToggle />
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => window.location.reload()}
-                data-testid="button-admin-logout"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader isAdmin={true} />
 
       <main className="container mx-auto px-4 py-6">
         <AdminDashboard />
