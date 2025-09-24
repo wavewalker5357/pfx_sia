@@ -5,60 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, Calendar, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useQuery } from '@tanstack/react-query';
+import type { IdeaWithFields } from '@shared/schema';
 
-// Mock data for demo purposes - TODO: remove mock functionality
-const mockIdeas = [
-  {
-    id: '1',
-    name: 'Sarah Chen',
-    title: 'AI-Powered Code Review Assistant',
-    description: 'An intelligent system that automatically reviews code changes, suggests improvements, and identifies potential security vulnerabilities using machine learning models.',
-    component: 'AI/ML',
-    tag: 'automation',
-    type: 'AI Solution',
-    createdAt: new Date('2025-01-15T10:30:00'),
-  },
-  {
-    id: '2',
-    name: 'Alex Rodriguez',
-    title: 'Smart Meeting Summarizer',
-    description: 'A tool that joins virtual meetings, transcribes conversations, and generates actionable summaries with key decisions and follow-up tasks.',
-    component: 'Product',
-    tag: 'productivity',
-    type: 'AI Idea',
-    createdAt: new Date('2025-01-15T11:15:00'),
-  },
-  {
-    id: '3',
-    name: 'Jordan Kim',
-    title: 'Automated Testing Story Generator',
-    description: 'Using GPT to automatically generate comprehensive test scenarios based on user stories and acceptance criteria, reducing manual testing effort.',
-    component: 'Frontend',
-    tag: 'efficiency',
-    type: 'AI Story',
-    createdAt: new Date('2025-01-15T14:20:00'),
-  },
-  {
-    id: '4',
-    name: 'Taylor Swift',
-    title: 'Intelligent Resource Allocation',
-    description: 'AI system that predicts project resource needs and automatically assigns team members based on skills, availability, and project requirements.',
-    component: 'Product',
-    tag: 'optimization',
-    type: 'AI Solution',
-    createdAt: new Date('2025-01-15T15:45:00'),
-  },
-  {
-    id: '5',
-    name: 'Morgan Lee',
-    title: 'Dynamic Documentation Generator',
-    description: 'An AI that reads code repositories and automatically generates and maintains up-to-date documentation, API specs, and usage examples.',
-    component: 'Backend',
-    tag: 'automation',
-    type: 'AI Idea',
-    createdAt: new Date('2025-01-15T16:10:00'),
-  },
-];
 
 const typeColors = {
   'AI Story': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
@@ -71,7 +20,19 @@ export default function IdeaBrowser() {
   const [filterType, setFilterType] = useState('all');
   const [filterComponent, setFilterComponent] = useState('all');
 
-  const filteredIdeas = mockIdeas.filter(idea => {
+  // Fetch ideas with dynamic fields from API
+  const { data: ideas = [], isLoading, error } = useQuery<IdeaWithFields[]>({
+    queryKey: ['/api/ideas'],
+    queryFn: async () => {
+      const response = await fetch('/api/ideas', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch ideas');
+      return response.json();
+    },
+  });
+
+  const filteredIdeas = ideas.filter(idea => {
     const matchesSearch = idea.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          idea.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          idea.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -81,7 +42,8 @@ export default function IdeaBrowser() {
     return matchesSearch && matchesType && matchesComponent;
   });
 
-  const formatTime = (date: Date) => {
+  const formatTime = (dateInput: string | Date) => {
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
     return date.toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric',
@@ -89,6 +51,26 @@ export default function IdeaBrowser() {
       minute: '2-digit' 
     });
   };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="text-center py-12">
+          <p>Loading ideas...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="text-center py-12">
+          <p className="text-destructive">Failed to load ideas. Please try again later.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -144,7 +126,7 @@ export default function IdeaBrowser() {
 
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Showing {filteredIdeas.length} of {mockIdeas.length} ideas
+              Showing {filteredIdeas.length} of {ideas.length} ideas
             </p>
             <Button 
               variant="outline" 

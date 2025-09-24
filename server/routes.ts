@@ -2,7 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
-  insertSummitResourceSchema, 
+  insertSummitResourceSchema,
+  insertIdeaSchema,
   insertFormFieldSchema, 
   insertFormFieldOptionSchema, 
   insertIdeaDynamicFieldSchema 
@@ -10,6 +11,91 @@ import {
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Ideas API routes
+  
+  // GET /api/ideas - Get all ideas with dynamic fields
+  app.get("/api/ideas", async (req, res) => {
+    try {
+      const ideas = await storage.getIdeasWithFields();
+      res.json(ideas);
+    } catch (error) {
+      console.error("Error fetching ideas:", error);
+      res.status(500).json({ error: "Failed to fetch ideas" });
+    }
+  });
+
+  // POST /api/ideas - Create new idea
+  app.post("/api/ideas", async (req, res) => {
+    try {
+      const validatedData = insertIdeaSchema.parse(req.body);
+      const idea = await storage.createIdea(validatedData);
+      res.status(201).json(idea);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error creating idea:", error);
+        res.status(500).json({ error: "Failed to create idea" });
+      }
+    }
+  });
+
+  // GET /api/ideas/:id - Get specific idea
+  app.get("/api/ideas/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const idea = await storage.getIdea(id);
+      
+      if (!idea) {
+        return res.status(404).json({ error: "Idea not found" });
+      }
+      
+      res.json(idea);
+    } catch (error) {
+      console.error("Error fetching idea:", error);
+      res.status(500).json({ error: "Failed to fetch idea" });
+    }
+  });
+
+  // PUT /api/ideas/:id - Update idea
+  app.put("/api/ideas/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertIdeaSchema.partial().parse(req.body);
+      const idea = await storage.updateIdea(id, validatedData);
+      
+      if (!idea) {
+        return res.status(404).json({ error: "Idea not found" });
+      }
+      
+      res.json(idea);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error updating idea:", error);
+        res.status(500).json({ error: "Failed to update idea" });
+      }
+    }
+  });
+
+  // DELETE /api/ideas/:id - Delete idea
+  app.delete("/api/ideas/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteIdea(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Idea not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting idea:", error);
+      res.status(500).json({ error: "Failed to delete idea" });
+    }
+  });
+
   // Summit Resources API routes
   
   // GET /api/summit-resources - Get all summit resources
@@ -212,6 +298,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting form field option:", error);
       res.status(500).json({ error: "Failed to delete form field option" });
+    }
+  });
+
+  // Idea Dynamic Fields API routes
+  
+  // GET /api/idea-dynamic-fields - Get dynamic field values (optionally filtered by ideaId)
+  app.get("/api/idea-dynamic-fields", async (req, res) => {
+    try {
+      const { ideaId } = req.query;
+      const fields = await storage.getIdeaDynamicFields(ideaId as string);
+      res.json(fields);
+    } catch (error) {
+      console.error("Error fetching idea dynamic fields:", error);
+      res.status(500).json({ error: "Failed to fetch idea dynamic fields" });
+    }
+  });
+
+  // POST /api/idea-dynamic-fields - Create new dynamic field value
+  app.post("/api/idea-dynamic-fields", async (req, res) => {
+    try {
+      const validatedData = insertIdeaDynamicFieldSchema.parse(req.body);
+      const field = await storage.createIdeaDynamicField(validatedData);
+      res.status(201).json(field);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error creating idea dynamic field:", error);
+        res.status(500).json({ error: "Failed to create idea dynamic field" });
+      }
     }
   });
 

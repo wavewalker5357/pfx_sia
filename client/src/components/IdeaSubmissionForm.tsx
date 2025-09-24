@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -10,71 +10,304 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Lightbulb } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import type { FormField as FormFieldType, FormFieldOption } from '@shared/schema';
 
-const formSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  title: z.string().min(5, 'Title must be at least 5 characters'),
-  description: z.string().min(10, 'Description must be at least 10 characters'),
-  component: z.string().min(1, 'Please select a component'),
-  tag: z.string().min(1, 'Please enter at least one tag'),
-  type: z.string().min(1, 'Please select an idea type'),
-});
-
-type FormData = z.infer<typeof formSchema>;
-
-const components = [
-  'Frontend', 'Backend', 'Mobile', 'AI/ML', 'Data', 'DevOps', 
-  'Design', 'Product', 'Security', 'Infrastructure', 'Other'
-];
-
-const ideaTypes = [
-  'AI Story', 'AI Idea', 'AI Solution'
-];
-
-const tags = [
-  'automation', 'productivity', 'innovation', 'efficiency', 'collaboration',
-  'scalability', 'performance', 'user-experience', 'integration', 'optimization'
-];
+// Dynamic schema creation will be handled in the component
 
 export default function IdeaSubmissionForm() {
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: '',
-      title: '',
-      description: '',
-      component: '',
-      tag: '',
-      type: '',
+  // Fetch form fields configured by admin
+  const { data: formFields = [], isLoading: isLoadingFields } = useQuery<FormFieldType[]>({
+    queryKey: ['/api/form-fields'],
+    queryFn: async () => {
+      const response = await fetch('/api/form-fields', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch form fields');
+      return response.json();
     },
   });
 
-  const onSubmit = async (data: FormData) => {
-    setIsSubmitting(true);
-    try {
-      console.log('Submitting idea:', data);
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+  // Fetch field options for list fields
+  const { data: allFieldOptions = [] } = useQuery<FormFieldOption[]>({
+    queryKey: ['/api/form-field-options'],
+    queryFn: async () => {
+      const response = await fetch('/api/form-field-options', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch field options');
+      return response.json();
+    },
+    enabled: formFields.some(field => field.type === 'list'),
+  });
+
+  // Create dynamic schema based on form fields
+  const formSchema = z.object(
+    formFields.reduce((acc, field) => {
+      let validation: any;
       
+      switch (field.type) {
+        case 'number':
+          validation = field.required === 'true' 
+            ? z.number({ coerce: true })
+            : z.number({ coerce: true }).optional();
+          break;
+        case 'email':
+          validation = field.required === 'true'
+            ? z.string().email('Please enter a valid email address').min(1, `${field.label} is required`)
+            : z.string().email('Please enter a valid email address').optional();
+          break;
+        default:
+          validation = field.required === 'true'
+            ? z.string().min(1, `${field.label} is required`)
+            : z.string().optional();
+      }
+      
+      acc[field.name] = validation;
+      return acc;
+    }, {} as Record<string, any>)
+  );
+
+  type FormData = z.infer<typeof formSchema>;
+
+  // Create default values based on form fields
+  const defaultValues = formFields.reduce((acc, field) => {
+    acc[field.name] = '';
+    return acc;
+  }, {} as Record<string, any>);
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues,
+  });
+
+  // Create idea mutation with dynamic field support
+  const createIdeaMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      // Create main idea record with core fields
+      const coreFields = ['submitter_name', 'idea_title', 'description', 'component', 'tag', 'type'];
+      const ideaData = {
+        name: data.submitter_name || '',
+        title: data.idea_title || '',
+        description: data.description || '',
+        component: data.component || '',
+        tag: data.tag || '',
+        type: data.type || '',
+      };
+      
+      console.log('Submitting idea data:', ideaData);
+      console.log('Full form data:', data);
+      
+      // Create the main idea  
+      const ideaResponse = await apiRequest('POST', '/api/ideas', ideaData);
+      const idea = await ideaResponse.json();
+      
+      // Store dynamic field values for any additional fields
+      const dynamicFields = Object.entries(data).filter(([key]) => !coreFields.includes(key));
+      
+      if (dynamicFields.length > 0) {
+        console.log('Storing dynamic fields:', dynamicFields);
+        for (const [fieldName, value] of dynamicFields) {
+          if (value && value !== '') {
+            const field = formFields.find(f => f.name === fieldName);
+            if (field) {
+              await apiRequest('POST', '/api/idea-dynamic-fields', {
+                ideaId: idea.id,
+                fieldId: field.id,
+                value: String(value)
+              });
+            }
+          }
+        }
+      }
+      
+      return idea;
+    },
+    onSuccess: () => {
+      // Invalidate ideas cache to refresh the Browse Ideas view
+      queryClient.invalidateQueries({ queryKey: ['/api/ideas'] });
       toast({
         title: "Idea submitted successfully!",
         description: "Thank you for contributing to the AI Summit.",
       });
-      
       form.reset();
-    } catch (error) {
+    },
+    onError: (error: any) => {
+      console.error('Error submitting idea:', error);
       toast({
         title: "Submission failed",
         description: "Please try again later.",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
+    },
+  });
+
+  const onSubmit = async (data: FormData) => {
+    createIdeaMutation.mutate(data);
+  };
+
+  // Render field based on type
+  const renderField = (field: FormFieldType) => {
+    const fieldOptions = allFieldOptions.filter(option => 
+      option.fieldId === field.id && option.isActive === 'true'
+    );
+
+    switch (field.type) {
+      case 'textarea':
+        return (
+          <FormField
+            key={field.id}
+            control={form.control}
+            name={field.name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>{field.label}</FormLabel>
+                <FormControl>
+                  <Textarea 
+                    placeholder={field.placeholder || ''}
+                    className="min-h-[120px]"
+                    data-testid={`input-${field.name}`}
+                    {...formField} 
+                  />
+                </FormControl>
+                {field.helpText && (
+                  <p className="text-sm text-muted-foreground">{field.helpText}</p>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      case 'number':
+        return (
+          <FormField
+            key={field.id}
+            control={form.control}
+            name={field.name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>{field.label}</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="number"
+                    placeholder={field.placeholder || ''}
+                    data-testid={`input-${field.name}`}
+                    {...formField}
+                    onChange={(e) => formField.onChange(Number(e.target.value))}
+                  />
+                </FormControl>
+                {field.helpText && (
+                  <p className="text-sm text-muted-foreground">{field.helpText}</p>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      case 'email':
+        return (
+          <FormField
+            key={field.id}
+            control={form.control}
+            name={field.name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>{field.label}</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="email"
+                    placeholder={field.placeholder || ''}
+                    data-testid={`input-${field.name}`}
+                    {...formField} 
+                  />
+                </FormControl>
+                {field.helpText && (
+                  <p className="text-sm text-muted-foreground">{field.helpText}</p>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      case 'list':
+        return (
+          <FormField
+            key={field.id}
+            control={form.control}
+            name={field.name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>{field.label}</FormLabel>
+                <Select onValueChange={formField.onChange} defaultValue={formField.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid={`select-${field.name}`}>
+                      <SelectValue placeholder={field.placeholder || `Select ${field.label.toLowerCase()}`} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {fieldOptions.map((option) => (
+                      <SelectItem key={option.id} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {field.helpText && (
+                  <p className="text-sm text-muted-foreground">{field.helpText}</p>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      default: // text
+        return (
+          <FormField
+            key={field.id}
+            control={form.control}
+            name={field.name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>{field.label}</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder={field.placeholder || ''}
+                    data-testid={`input-${field.name}`}
+                    {...formField} 
+                  />
+                </FormControl>
+                {field.helpText && (
+                  <p className="text-sm text-muted-foreground">{field.helpText}</p>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
     }
   };
+
+  // Don't render form until fields are loaded
+  if (isLoadingFields || formFields.length === 0) {
+    return (
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardContent className="p-8 text-center">
+          {isLoadingFields ? (
+            <p>Loading form...</p>
+          ) : (
+            <p>No form fields configured. Please contact an administrator.</p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -90,142 +323,23 @@ export default function IdeaSubmissionForm() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Your Name</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="John Doe" 
-                        data-testid="input-name"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Idea Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-type">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {ideaTypes.map((type) => (
-                          <SelectItem key={type} value={type}>{type}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Describe your idea in a few words" 
-                      data-testid="input-title"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Provide a detailed description of your AI idea or solution..."
-                      className="min-h-[120px]"
-                      data-testid="input-description"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="component"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Component</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-component">
-                          <SelectValue placeholder="Select component" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {components.map((component) => (
-                          <SelectItem key={component} value={component}>{component}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="tag"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tag</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-tag">
-                          <SelectValue placeholder="Select tag" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {tags.map((tag) => (
-                          <SelectItem key={tag} value={tag}>{tag}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            {/* Render form fields dynamically based on admin configuration */}
+            <div className="space-y-4">
+              {formFields
+                .filter(field => field.isActive === 'true')
+                .sort((a, b) => Number(a.order) - Number(b.order))
+                .map(field => renderField(field))
+              }
             </div>
 
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={isSubmitting}
+              disabled={createIdeaMutation.isPending}
               data-testid="button-submit"
             >
               <Plus className="w-4 h-4 mr-2" />
-              {isSubmitting ? 'Submitting...' : 'Submit Idea'}
+              {createIdeaMutation.isPending ? 'Submitting...' : 'Submit Idea'}
             </Button>
           </form>
         </Form>

@@ -1,6 +1,8 @@
 import { 
   type User, 
   type InsertUser, 
+  type Idea,
+  type InsertIdea,
   type SummitResource, 
   type InsertSummitResource,
   type FormField,
@@ -19,6 +21,13 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  
+  // Ideas CRUD
+  getIdeas(): Promise<Idea[]>;
+  getIdea(id: string): Promise<Idea | undefined>;
+  createIdea(idea: InsertIdea): Promise<Idea>;
+  updateIdea(id: string, updates: Partial<InsertIdea>): Promise<Idea | undefined>;
+  deleteIdea(id: string): Promise<boolean>;
   
   // Summit Resources CRUD
   getSummitResources(): Promise<SummitResource[]>;
@@ -50,6 +59,7 @@ export interface IStorage {
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
+  private ideas: Map<string, Idea>;
   private summitResources: Map<string, SummitResource>;
   private formFields: Map<string, FormField>;
   private formFieldOptions: Map<string, FormFieldOption>;
@@ -57,14 +67,76 @@ export class MemStorage implements IStorage {
 
   constructor() {
     this.users = new Map();
+    this.ideas = new Map();
     this.summitResources = new Map();
     this.formFields = new Map();
     this.formFieldOptions = new Map();
     this.ideaDynamicFields = new Map();
     
     // Initialize with default data
+    this.initializeDefaultIdeas();
     this.initializeDefaultResources();
     this.initializeDefaultFormFields();
+  }
+
+  private initializeDefaultIdeas() {
+    // Initialize with sample ideas using the old static schema for now
+    const defaultIdeas: Idea[] = [
+      {
+        id: 'idea_1',
+        name: 'Sarah Chen',
+        title: 'AI-Powered Code Review Assistant', 
+        description: 'An intelligent system that automatically reviews code changes, suggests improvements, and identifies potential security vulnerabilities using machine learning models.',
+        component: 'AI/ML',
+        tag: 'automation',
+        type: 'AI Solution',
+        createdAt: new Date('2025-01-15T10:30:00Z')
+      },
+      {
+        id: 'idea_2',
+        name: 'Alex Rodriguez',
+        title: 'Smart Meeting Summarizer',
+        description: 'A tool that joins virtual meetings, transcribes conversations, and generates actionable summaries with key decisions and follow-up tasks.',
+        component: 'Product',
+        tag: 'productivity',
+        type: 'AI Idea',
+        createdAt: new Date('2025-01-15T11:15:00Z')
+      },
+      {
+        id: 'idea_3',
+        name: 'Morgan Taylor',
+        title: 'Automated Testing Story Generator',
+        description: 'Generate comprehensive test scenarios and user stories automatically based on feature requirements and user personas.',
+        component: 'AI/ML',
+        tag: 'automation',
+        type: 'AI Story',
+        createdAt: new Date('2025-01-15T14:20:00Z')
+      },
+      {
+        id: 'idea_4',
+        name: 'Jordan Kim',
+        title: 'Intelligent Resource Allocation',
+        description: 'Optimize compute resource allocation across environments using predictive analytics and historical usage patterns.',
+        component: 'Infrastructure',
+        tag: 'optimization',
+        type: 'AI Solution',
+        createdAt: new Date('2025-01-15T16:45:00Z')
+      },
+      {
+        id: 'idea_5',
+        name: 'Taylor Swift',
+        title: 'Developer Mood Analysis',
+        description: 'Use sentiment analysis on commit messages and code reviews to gauge team morale and identify potential burnout.',
+        component: 'Platform',
+        tag: 'collaboration',
+        type: 'AI Idea',
+        createdAt: new Date('2025-01-15T18:00:00Z')
+      }
+    ];
+    
+    defaultIdeas.forEach(idea => {
+      this.ideas.set(idea.id, idea);
+    });
   }
 
   private initializeDefaultResources() {
@@ -208,6 +280,53 @@ export class MemStorage implements IStorage {
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
     return user;
+  }
+
+  // Ideas CRUD implementation
+  async getIdeas(): Promise<Idea[]> {
+    return Array.from(this.ideas.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  // Get ideas with dynamic fields for enhanced browse view
+  async getIdeasWithFields(): Promise<(Idea & { dynamicFields: IdeaDynamicField[] })[]> {
+    const ideas = await this.getIdeas();
+    const ideasWithFields = await Promise.all(
+      ideas.map(async (idea) => {
+        const dynamicFields = await this.getIdeaDynamicFields(idea.id);
+        return { ...idea, dynamicFields };
+      })
+    );
+    return ideasWithFields;
+  }
+
+  async getIdea(id: string): Promise<Idea | undefined> {
+    return this.ideas.get(id);
+  }
+
+  async createIdea(insertIdea: InsertIdea): Promise<Idea> {
+    const id = randomUUID();
+    const idea: Idea = {
+      ...insertIdea,
+      id,
+      createdAt: new Date(),
+    };
+    this.ideas.set(id, idea);
+    return idea;
+  }
+
+  async updateIdea(id: string, updates: Partial<InsertIdea>): Promise<Idea | undefined> {
+    const existing = this.ideas.get(id);
+    if (!existing) return undefined;
+    
+    const updated: Idea = { ...existing, ...updates };
+    this.ideas.set(id, updated);
+    return updated;
+  }
+
+  async deleteIdea(id: string): Promise<boolean> {
+    return this.ideas.delete(id);
   }
 
   // Summit Resources methods
