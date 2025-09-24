@@ -529,8 +529,10 @@ export class MemStorage implements IStorage {
 
   async createHeaderSettings(insertSettings: InsertHeaderSettings): Promise<HeaderSettings> {
     const id = randomUUID();
-    const settings: HeaderSettings = {
-      // Set defaults for required fields
+    const now = new Date();
+    
+    // Build settings by merging defaults with provided values
+    const defaults = {
       attendeeTitle: 'AI Summit Ideas',
       attendeeSubtitle: 'Product & Engineering Summit 2025',
       adminTitle: 'AI Summit Admin',
@@ -543,6 +545,7 @@ export class MemStorage implements IStorage {
       titleColor: '#000000',
       subtitleColor: '#666666',
       borderColor: '#e5e7eb',
+      backgroundImage: null,
       backgroundImageOpacity: '0.1',
       backgroundImagePosition: 'center',
       backgroundImageSize: 'cover',
@@ -553,12 +556,16 @@ export class MemStorage implements IStorage {
       mobileTitleSize: '1.5rem',
       desktopTitleSize: '2rem',
       isActive: 'true',
-      // Override with provided values
-      ...insertSettings,
-      id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
     };
+    
+    const settings: HeaderSettings = {
+      ...defaults,
+      ...insertSettings, // Merge in provided values
+      id,
+      createdAt: now,
+      updatedAt: now,
+    };
+    
     this.headerSettings = settings;
     return settings;
   }
@@ -566,11 +573,15 @@ export class MemStorage implements IStorage {
   async updateHeaderSettings(id: string, updates: Partial<InsertHeaderSettings>): Promise<HeaderSettings | undefined> {
     if (!this.headerSettings || this.headerSettings.id !== id) return undefined;
     
+    const now = new Date();
     const updated: HeaderSettings = { 
       ...this.headerSettings, 
       ...updates,
-      updatedAt: new Date()
+      id, // Preserve the original id
+      createdAt: this.headerSettings.createdAt, // Preserve original creation time
+      updatedAt: now // Update the timestamp
     };
+    
     this.headerSettings = updated;
     return updated;
   }

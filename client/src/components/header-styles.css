@@ -2,6 +2,7 @@
 .app-header {
   background-color: var(--header-bg-color, #ffffff);
   border-color: var(--header-border-color, #e5e7eb);
+  min-height: var(--header-height, auto);
 }
 
 .app-header-title {
@@ -13,45 +14,41 @@
   color: var(--header-subtitle-color, #666666);
 }
 
-/* Mobile responsiveness */
-@media (max-width: 768px) {
-  .app-header-title {
-    font-size: var(--header-mobile-title-size, 1.5rem);
-  }
-  
-  .app-header .container {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-  }
-  
-  .app-header-subtitle {
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-  }
+/* Base responsive styles (JavaScript will override these based on custom breakpoint) */
+.app-header-title {
+  transition: font-size 0.3s ease;
 }
 
-/* Small mobile devices */
-@media (max-width: 480px) {
-  .app-header-title {
-    font-size: calc(var(--header-mobile-title-size, 1.5rem) * 0.9);
-  }
-  
-  .app-header-subtitle {
-    font-size: 0.75rem;
-    line-height: 1rem;
-  }
-  
-  .app-header .container {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-  }
+.app-header-subtitle {
+  transition: font-size 0.3s ease;
 }
 
-/* Large screens */
-@media (min-width: 1024px) {
-  .app-header-title {
-    font-size: var(--header-desktop-title-size, 2rem);
-  }
+.app-header .container {
+  transition: padding 0.3s ease;
+}
+
+/* Mobile responsiveness - handled by JavaScript for custom breakpoints */
+.app-header.is-mobile .app-header-title {
+  font-size: var(--header-mobile-title-size, 1.5rem);
+}
+
+.app-header.is-mobile .app-header-subtitle {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.app-header.is-small-mobile .app-header-title {
+  font-size: calc(var(--header-mobile-title-size, 1.5rem) * 0.9);
+}
+
+.app-header.is-small-mobile .app-header-subtitle {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+/* Desktop styles (default, applied when not mobile) */
+.app-header:not(.is-mobile) .app-header-title {
+  font-size: var(--header-desktop-title-size, 2rem);
 }
 
 /* Dynamic background image support */
@@ -60,6 +57,12 @@
   background-position: var(--header-bg-position, center);
   background-size: var(--header-bg-size, cover);
   background-repeat: no-repeat;
+}
+
+/* Apply dynamic padding from header settings */
+.app-header .container {
+  padding-top: var(--header-padding-y, 1rem);
+  padding-bottom: var(--header-padding-y, 1rem);
 }
 
 /* High contrast mode support */

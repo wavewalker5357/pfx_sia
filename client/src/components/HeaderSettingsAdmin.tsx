@@ -14,10 +14,11 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Save, RefreshCw, Eye, Palette, Image, Type, Layout } from 'lucide-react';
+import { Save, RefreshCw, Eye, Palette, Image, Type, Layout, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import type { HeaderSettings } from '@shared/schema';
+import type { HeaderSettings, InsertHeaderSettings } from '@shared/schema';
+import { insertHeaderSettingsSchema } from '@shared/schema';
 
 export function HeaderSettingsAdmin() {
   const { toast } = useToast();
@@ -76,21 +77,91 @@ export function HeaderSettingsAdmin() {
     },
   });
 
-  const [formData, setFormData] = useState<Partial<HeaderSettings>>({});
+  const [formData, setFormData] = useState<Partial<InsertHeaderSettings>>({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // Initialize form data when settings load
   useEffect(() => {
     if (headerSettings) {
-      setFormData(headerSettings);
+      // Convert HeaderSettings to InsertHeaderSettings (exclude read-only fields)
+      const { id, createdAt, updatedAt, ...insertData } = headerSettings;
+      setFormData(insertData);
     }
   }, [headerSettings]);
 
-  const handleInputChange = (field: keyof HeaderSettings, value: string) => {
+  const validateField = (field: keyof InsertHeaderSettings, value: string): string | null => {
+    try {
+      // Create a partial object with just this field to validate
+      const testData = { [field]: value };
+      const partialSchema = insertHeaderSettingsSchema.partial();
+      partialSchema.parse(testData);
+      return null;
+    } catch (error: any) {
+      if (error.errors && error.errors.length > 0) {
+        return error.errors[0].message;
+      }
+      return 'Invalid value';
+    }
+  };
+
+  const validateForm = (): boolean => {
+    try {
+      // Validate entire form with partial schema (allows missing fields)
+      insertHeaderSettingsSchema.partial().parse(formData);
+      setValidationErrors({});
+      return true;
+    } catch (error: any) {
+      const errors: Record<string, string> = {};
+      if (error.errors) {
+        error.errors.forEach((err: any) => {
+          if (err.path && err.path.length > 0) {
+            errors[err.path[0]] = err.message;
+          }
+        });
+      }
+      setValidationErrors(errors);
+      return false;
+    }
+  };
+
+  const handleInputChange = (field: keyof InsertHeaderSettings, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[field]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
   };
 
   const handleSave = () => {
-    updateMutation.mutate(formData);
+    if (validateForm()) {
+      // Only send changed fields
+      const changedFields: Partial<InsertHeaderSettings> = {};
+      Object.entries(formData).forEach(([key, value]) => {
+        if (headerSettings && headerSettings[key as keyof HeaderSettings] !== value) {
+          changedFields[key as keyof InsertHeaderSettings] = value as any;
+        }
+      });
+      
+      if (Object.keys(changedFields).length > 0) {
+        updateMutation.mutate(changedFields);
+      } else {
+        toast({
+          title: 'No Changes',
+          description: 'No changes detected to save.',
+        });
+      }
+    } else {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fix the validation errors before saving.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleReset = () => {
@@ -199,7 +270,14 @@ export function HeaderSettingsAdmin() {
                     onChange={(e) => handleInputChange('attendeeTitle', e.target.value)}
                     placeholder="AI Summit Ideas"
                     data-testid="input-attendee-title"
+                    className={validationErrors.attendeeTitle ? 'border-destructive' : ''}
                   />
+                  {validationErrors.attendeeTitle && (
+                    <div className="flex items-center gap-1 text-sm text-destructive">
+                      <AlertCircle className="w-3 h-3" />
+                      {validationErrors.attendeeTitle}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="attendee-subtitle">Attendee Subtitle</Label>
