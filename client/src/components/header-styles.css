@@ -1,0 +1,86 @@
+/* Header responsive styles */
+.app-header {
+  background-color: var(--header-bg-color, #ffffff);
+  border-color: var(--header-border-color, #e5e7eb);
+}
+
+.app-header-title {
+  font-size: var(--header-desktop-title-size, 2rem);
+  color: var(--header-title-color, #000000);
+}
+
+.app-header-subtitle {
+  color: var(--header-subtitle-color, #666666);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .app-header-title {
+    font-size: var(--header-mobile-title-size, 1.5rem);
+  }
+  
+  .app-header .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  
+  .app-header-subtitle {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+  .app-header-title {
+    font-size: calc(var(--header-mobile-title-size, 1.5rem) * 0.9);
+  }
+  
+  .app-header-subtitle {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+  
+  .app-header .container {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+
+/* Large screens */
+@media (min-width: 1024px) {
+  .app-header-title {
+    font-size: var(--header-desktop-title-size, 2rem);
+  }
+}
+
+/* Dynamic background image support */
+.app-header[data-has-bg-image="true"] {
+  background-image: var(--header-bg-image);
+  background-position: var(--header-bg-position, center);
+  background-size: var(--header-bg-size, cover);
+  background-repeat: no-repeat;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .app-header {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .app-header * {
+    transition: none !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .app-header {
+    background: white !important;
+    color: black !important;
+    border: 1px solid black !important;
+  }
+}
