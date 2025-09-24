@@ -93,10 +93,7 @@ export default function AdminDashboard() {
 
   // Summit resources mutations
   const createResourceMutation = useMutation({
-    mutationFn: (resource: InsertSummitResource) => apiRequest('/api/summit-resources', {
-      method: 'POST',
-      body: resource,
-    }),
+    mutationFn: (resource: InsertSummitResource) => apiRequest('POST', '/api/summit-resources', resource),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/summit-resources'] });
       toast({
@@ -117,10 +114,7 @@ export default function AdminDashboard() {
 
   const updateResourceMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<InsertSummitResource> }) => 
-      apiRequest(`/api/summit-resources/${id}`, {
-        method: 'PUT',
-        body: data,
-      }),
+      apiRequest('PUT', `/api/summit-resources/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/summit-resources'] });
       toast({
@@ -139,9 +133,7 @@ export default function AdminDashboard() {
   });
 
   const deleteResourceMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/summit-resources/${id}`, {
-      method: 'DELETE',
-    }),
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/summit-resources/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/summit-resources'] });
       toast({
