@@ -98,7 +98,7 @@ export default function AdminDashboard() {
       body: resource,
     }),
     onSuccess: () => {
-      refetchResources();
+      queryClient.invalidateQueries({ queryKey: ['/api/summit-resources'] });
       toast({
         title: "Resource Added",
         description: "Summit resource has been successfully added.",
@@ -122,7 +122,7 @@ export default function AdminDashboard() {
         body: data,
       }),
     onSuccess: () => {
-      refetchResources();
+      queryClient.invalidateQueries({ queryKey: ['/api/summit-resources'] });
       toast({
         title: "Resource Updated",
         description: "Summit resource has been successfully updated.",
@@ -143,7 +143,7 @@ export default function AdminDashboard() {
       method: 'DELETE',
     }),
     onSuccess: () => {
-      refetchResources();
+      queryClient.invalidateQueries({ queryKey: ['/api/summit-resources'] });
       toast({
         title: "Resource Deleted",
         description: "Summit resource has been successfully deleted.",
