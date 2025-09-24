@@ -115,3 +115,8 @@ export const insertIdeaDynamicFieldSchema = createInsertSchema(ideaDynamicFields
 
 export type InsertIdeaDynamicField = z.infer<typeof insertIdeaDynamicFieldSchema>;
 export type IdeaDynamicField = typeof ideaDynamicFields.$inferSelect;
+
+// Enhanced idea type with dynamic fields for browse view
+export type IdeaWithFields = Idea & {
+  dynamicFields: IdeaDynamicField[];
+};
