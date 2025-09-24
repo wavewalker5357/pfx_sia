@@ -24,12 +24,14 @@ import {
   BarChart3,
   Users,
   FormInput,
-  Palette
+  Palette,
+  Kanban,
+  GripVertical
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import type { SummitResource, InsertSummitResource, FormField, InsertFormField, FormFieldOption, InsertFormFieldOption } from '@shared/schema';
+import type { SummitResource, InsertSummitResource, FormField, InsertFormField, FormFieldOption, InsertFormFieldOption, KanbanCategory, InsertKanbanCategory, ViewSettings, InsertViewSettings } from '@shared/schema';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import { HeaderSettingsAdmin } from './HeaderSettingsAdmin';
 
@@ -484,6 +486,20 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-2">
               <Palette className="w-4 h-4" />
               Header Settings
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('kanban-categories')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'kanban-categories'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+            }`}
+            data-testid="tab-kanban-categories"
+          >
+            <div className="flex items-center gap-2">
+              <Kanban className="w-4 h-4" />
+              Board Categories
             </div>
           </button>
         </nav>
@@ -1633,6 +1649,470 @@ export default function AdminDashboard() {
           <HeaderSettingsAdmin />
         </div>
       )}
+
+      {/* Kanban Categories Tab */}
+      {activeTab === 'kanban-categories' && (
+        <KanbanCategoriesAdmin />
+      )}
+    </div>
+  );
+}
+
+// Kanban Categories Admin Component
+function KanbanCategoriesAdmin() {
+  const { toast } = useToast();
+  const [showNewCategoryDialog, setShowNewCategoryDialog] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<KanbanCategory | null>(null);
+
+  // Fetch kanban categories
+  const { data: categories = [], isLoading: isLoadingCategories } = useQuery<KanbanCategory[]>({
+    queryKey: ['/api/kanban-categories'],
+    queryFn: async () => {
+      const response = await fetch('/api/kanban-categories', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch kanban categories');
+      return response.json();
+    },
+  });
+
+  // Fetch view settings
+  const { data: viewSettings, isLoading: isLoadingViewSettings } = useQuery<ViewSettings>({
+    queryKey: ['/api/view-settings'],
+    queryFn: async () => {
+      const response = await fetch('/api/view-settings', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch view settings');
+      return response.json();
+    },
+  });
+
+  // Create category mutation
+  const createCategoryMutation = useMutation({
+    mutationFn: (data: InsertKanbanCategory) => apiRequest('POST', '/api/kanban-categories', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/kanban-categories'] });
+      toast({
+        title: 'Success',
+        description: 'Category created successfully.',
+      });
+      setShowNewCategoryDialog(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create category.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Update category mutation
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<InsertKanbanCategory> }) => 
+      apiRequest('PUT', `/api/kanban-categories/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/kanban-categories'] });
+      toast({
+        title: 'Success',
+        description: 'Category updated successfully.',
+      });
+      setEditingCategory(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update category.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete category mutation
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/kanban-categories/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/kanban-categories'] });
+      toast({
+        title: 'Success',
+        description: 'Category deleted successfully.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete category.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Update view settings mutation
+  const updateViewSettingsMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<InsertViewSettings> }) => 
+      apiRequest('PUT', `/api/view-settings/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/view-settings'] });
+      toast({
+        title: 'Success',
+        description: 'View settings updated successfully.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update view settings.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Create view settings mutation (if none exist)
+  const createViewSettingsMutation = useMutation({
+    mutationFn: (data: InsertViewSettings) => apiRequest('POST', '/api/view-settings', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/view-settings'] });
+      toast({
+        title: 'Success',
+        description: 'View settings created successfully.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create view settings.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleCreateCategory = (formData: FormData) => {
+    const data: InsertKanbanCategory = {
+      key: formData.get('key') as string,
+      title: formData.get('title') as string,
+      color: formData.get('color') as string,
+      order: formData.get('order') as string,
+      isActive: 'true',
+    };
+    createCategoryMutation.mutate(data);
+  };
+
+  const handleUpdateCategory = (category: KanbanCategory, updates: Partial<InsertKanbanCategory>) => {
+    updateCategoryMutation.mutate({ id: category.id, data: updates });
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    if (confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
+      deleteCategoryMutation.mutate(id);
+    }
+  };
+
+  const handleViewSettingsChange = (field: 'defaultView' | 'showBoardByDefault', value: string) => {
+    if (viewSettings) {
+      updateViewSettingsMutation.mutate({
+        id: viewSettings.id,
+        data: { [field]: value }
+      });
+    } else {
+      createViewSettingsMutation.mutate({
+        defaultView: field === 'defaultView' ? value : 'list',
+        showBoardByDefault: field === 'showBoardByDefault' ? value : 'false'
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Board Categories</h2>
+          <p className="text-muted-foreground">Configure categories for the kanban board view</p>
+        </div>
+        <Button 
+          onClick={() => setShowNewCategoryDialog(true)}
+          className="flex items-center gap-2"
+          data-testid="button-add-category"
+        >
+          <Plus className="w-4 h-4" />
+          Add Category
+        </Button>
+      </div>
+
+      {/* View Settings Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5" />
+            Default View Settings
+          </CardTitle>
+          <CardDescription>
+            Configure the default view mode for end users when they visit the ideas page
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingViewSettings ? (
+            <div className="space-y-3">
+              <div className="animate-pulse">
+                <div className="h-10 bg-muted rounded-lg"></div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="default-view">Default View for End Users</Label>
+                <select
+                  id="default-view"
+                  className="w-full px-3 py-2 border border-input rounded-md"
+                  value={viewSettings?.defaultView || 'list'}
+                  onChange={(e) => handleViewSettingsChange('defaultView', e.target.value)}
+                  data-testid="select-default-view"
+                >
+                  <option value="list">List View</option>
+                  <option value="board">Board View</option>
+                </select>
+                <p className="text-sm text-muted-foreground">
+                  Choose which view users see by default when they visit the ideas page
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="show-board-by-default">Show Board as Primary View</Label>
+                <select
+                  id="show-board-by-default"
+                  className="w-full px-3 py-2 border border-input rounded-md"
+                  value={viewSettings?.showBoardByDefault || 'false'}
+                  onChange={(e) => handleViewSettingsChange('showBoardByDefault', e.target.value)}
+                  data-testid="select-show-board-by-default"
+                >
+                  <option value="false">No - Show List View Tab First</option>
+                  <option value="true">Yes - Show Board View Tab First</option>
+                </select>
+                <p className="text-sm text-muted-foreground">
+                  Controls which tab appears as the primary option in the view toggle
+                </p>
+              </div>
+
+              <div className="p-3 bg-muted rounded-lg">
+                <div className="text-sm">
+                  <strong>Current Settings:</strong>
+                  <ul className="mt-2 space-y-1">
+                    <li>• Default View: <Badge variant="secondary">{viewSettings?.defaultView || 'list'}</Badge></li>
+                    <li>• Board Priority: <Badge variant="secondary">{viewSettings?.showBoardByDefault === 'true' ? 'Yes' : 'No'}</Badge></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Categories List */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Kanban className="w-5 h-5" />
+              Categories ({categories.length})
+            </CardTitle>
+            <CardDescription>
+              Manage board categories. Drag to reorder, click to edit.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingCategories ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-16 bg-muted rounded-lg"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {categories.map((category) => (
+                  <div 
+                    key={category.id} 
+                    className="p-4 border rounded-lg hover:border-muted-foreground transition-all cursor-pointer"
+                    onClick={() => setEditingCategory(category)}
+                    data-testid={`category-item-${category.id}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <GripVertical className="w-4 h-4 text-muted-foreground" />
+                        <div 
+                          className="w-4 h-4 rounded-full" 
+                          style={{ backgroundColor: category.color }}
+                        ></div>
+                        <div>
+                          <div className="font-medium">{category.title}</div>
+                          <div className="text-sm text-muted-foreground">Key: {category.key}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={category.isActive === 'true' ? 'default' : 'secondary'}>
+                          {category.isActive === 'true' ? 'Active' : 'Inactive'}
+                        </Badge>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCategory(category.id);
+                          }}
+                          data-testid={`button-delete-category-${category.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {categories.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No categories found. Create your first category to get started.
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Category Form */}
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {editingCategory ? 'Edit Category' : showNewCategoryDialog ? 'New Category' : 'Category Details'}
+            </CardTitle>
+            <CardDescription>
+              {editingCategory ? 'Update category settings' : showNewCategoryDialog ? 'Add a new board category' : 'Select a category to edit'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {(showNewCategoryDialog || editingCategory) ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  if (editingCategory) {
+                    const updates: Partial<InsertKanbanCategory> = {
+                      key: formData.get('key') as string,
+                      title: formData.get('title') as string,
+                      color: formData.get('color') as string,
+                      order: formData.get('order') as string,
+                      isActive: formData.get('isActive') as string,
+                    };
+                    handleUpdateCategory(editingCategory, updates);
+                  } else {
+                    handleCreateCategory(formData);
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="key">Key</Label>
+                  <Input
+                    id="key"
+                    name="key"
+                    placeholder="ai_story"
+                    required
+                    defaultValue={editingCategory?.key}
+                    data-testid="input-category-key"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Unique identifier (lowercase, underscores only)
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    placeholder="AI Story"
+                    required
+                    defaultValue={editingCategory?.title}
+                    data-testid="input-category-title"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="color">Color</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="color"
+                      name="color"
+                      type="color"
+                      defaultValue={editingCategory?.color || '#3b82f6'}
+                      className="w-20 h-9"
+                      data-testid="input-category-color"
+                    />
+                    <Input
+                      name="color"
+                      placeholder="#3b82f6"
+                      defaultValue={editingCategory?.color || '#3b82f6'}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="order">Order</Label>
+                  <Input
+                    id="order"
+                    name="order"
+                    type="number"
+                    placeholder="0"
+                    required
+                    defaultValue={editingCategory?.order || '0'}
+                    data-testid="input-category-order"
+                  />
+                </div>
+
+                {editingCategory && (
+                  <div className="space-y-2">
+                    <Label htmlFor="isActive">Status</Label>
+                    <select
+                      id="isActive"
+                      name="isActive"
+                      className="w-full px-3 py-2 border border-input rounded-md"
+                      defaultValue={editingCategory.isActive}
+                      data-testid="select-category-active"
+                    >
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}>
+                    {editingCategory ? (
+                      updateCategoryMutation.isPending ? 'Updating...' : 'Update Category'
+                    ) : (
+                      createCategoryMutation.isPending ? 'Creating...' : 'Create Category'
+                    )}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowNewCategoryDialog(false);
+                      setEditingCategory(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Select a category from the list to edit its settings, or click "Add Category" to create a new one.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
