@@ -99,6 +99,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PATCH /api/ideas/:id/category - Update idea category (for drag and drop)
+  app.patch("/api/ideas/:id/category", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { type } = req.body;
+      
+      if (!type || typeof type !== 'string') {
+        return res.status(400).json({ error: 'Category type is required' });
+      }
+      
+      // Validate that the target category exists and is active
+      const categories = await storage.getKanbanCategories();
+      const activeCategories = categories.filter(cat => cat.isActive === 'true');
+      const validCategoryKeys = activeCategories.map(cat => cat.key);
+      
+      if (!validCategoryKeys.includes(type)) {
+        return res.status(400).json({ 
+          error: `Invalid category type '${type}'. Must be one of: ${validCategoryKeys.join(', ')}` 
+        });
+      }
+      
+      const updatedIdea = await storage.updateIdeaCategory(id, type);
+      if (!updatedIdea) {
+        return res.status(404).json({ error: 'Idea not found' });
+      }
+      
+      res.json(updatedIdea);
+    } catch (error) {
+      console.error('Error updating idea category:', error);
+      res.status(500).json({ error: 'Failed to update idea category' });
+    }
+  });
+
   // Summit Resources API routes
   
   // GET /api/summit-resources - Get all summit resources
