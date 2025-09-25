@@ -26,7 +26,8 @@ import {
   FormInput,
   Palette,
   Kanban,
-  GripVertical
+  GripVertical,
+  Globe
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -34,6 +35,7 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import type { SummitResource, InsertSummitResource, FormField, InsertFormField, FormFieldOption, InsertFormFieldOption, KanbanCategory, InsertKanbanCategory, ViewSettings, InsertViewSettings } from '@shared/schema';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import { HeaderSettingsAdmin } from './HeaderSettingsAdmin';
+import { LandingPageSettingsAdmin } from './LandingPageSettingsAdmin';
 
 // Mock data for admin - TODO: remove mock functionality
 const recentActivity = [
@@ -500,6 +502,20 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-2">
               <Kanban className="w-4 h-4" />
               Board Categories
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('landing-page-settings')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'landing-page-settings'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+            }`}
+            data-testid="tab-landing-page-settings"
+          >
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              Landing Page
             </div>
           </button>
         </nav>
@@ -1653,6 +1669,11 @@ export default function AdminDashboard() {
       {/* Kanban Categories Tab */}
       {activeTab === 'kanban-categories' && (
         <KanbanCategoriesAdmin />
+      )}
+
+      {/* Landing Page Settings Tab */}
+      {activeTab === 'landing-page-settings' && (
+        <LandingPageSettingsAdmin />
       )}
     </div>
   );

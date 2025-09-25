@@ -6,7 +6,8 @@ import {
   formFieldOptions, 
   headerSettings, 
   kanbanCategories, 
-  viewSettings 
+  viewSettings,
+  landingPageSettings
 } from "@shared/schema";
 
 async function seedDatabase() {
@@ -21,6 +22,7 @@ async function seedDatabase() {
     await db.delete(headerSettings);
     await db.delete(kanbanCategories);
     await db.delete(viewSettings);
+    await db.delete(landingPageSettings);
 
     // Seed Kanban Categories
     console.log("📋 Seeding kanban categories...");
@@ -199,22 +201,10 @@ async function seedDatabase() {
       adminTitle: "Summit Admin Dashboard",
       adminSubtitle: "Manage your AI Summit content and ideas",
       summitResourcesLabel: "Summit Resources",
-      showSummitResources: "true",
-      headerBackgroundColor: "#1e40af",
-      headerTextColor: "#ffffff",
-      logoUrl: "",
-      showLogo: "false",
-      logoPosition: "left",
-      logoSize: "medium",
-      titleAlignment: "center",
-      showSubtitle: "true",
-      customCss: "",
-      mobileHeaderSize: "medium",
-      desktopHeaderSize: "large",
-      mobileLogoSize: "small",
-      desktopLogoSize: "medium",
-      mobileTitleSize: "medium",
-      desktopTitleSize: "large"
+      backgroundColor: "#1e40af",
+      textColor: "#ffffff",
+      titleColor: "#ffffff",
+      subtitleColor: "#e0e7ff"
     });
 
     // Seed View Settings
@@ -222,6 +212,15 @@ async function seedDatabase() {
     await db.insert(viewSettings).values({
       defaultView: "list",
       showBoardByDefault: "false"
+    });
+
+    // Seed Landing Page Settings
+    console.log("🚀 Seeding landing page settings...");
+    await db.insert(landingPageSettings).values({
+      mode: "summit",
+      maintenanceMessage: "The AI Summit platform is currently under construction. Please check back soon!",
+      countdownMessage: "Time to start of the Pricefx Product & Engineering Summit",
+      summitStartDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
     });
 
     console.log("✅ Database seeded successfully!");
