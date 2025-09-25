@@ -224,10 +224,10 @@ export function AppHeader({ isAdmin = false }: AppHeaderProps) {
 
           {/* Right side - Action buttons */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            <ThemeToggle />
             <SummitResourcesDropdown 
               customLabel={activeSettings.summitResourcesLabel}
             />
-            <ThemeToggle />
             <Button 
               variant="outline" 
               size="sm"
