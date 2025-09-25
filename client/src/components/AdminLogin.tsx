@@ -107,14 +107,6 @@ export default function AdminLogin() {
               </Button>
             </form>
 
-            {/* Demo Credentials */}
-            <div className="mt-6 p-4 bg-muted rounded-lg">
-              <h4 className="font-medium mb-2">Demo Credentials:</h4>
-              <div className="text-sm text-muted-foreground">
-                <div>Username: <code className="bg-background px-1 rounded">admin</code></div>
-                <div>Password: <code className="bg-background px-1 rounded">admin123</code></div>
-              </div>
-            </div>
 
             {/* Back to Landing */}
             <div className="mt-4">
