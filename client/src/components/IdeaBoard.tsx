@@ -1,10 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Calendar, Tag, User } from 'lucide-react';
 import type { Idea, KanbanCategory } from '@shared/schema';
+import { useState } from 'react';
+import { apiRequest } from '@/lib/queryClient';
 
 interface IdeaBoardProps {
   searchTerm?: string;
@@ -13,6 +15,9 @@ interface IdeaBoardProps {
 }
 
 export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFilter = '' }: IdeaBoardProps) {
+  const queryClient = useQueryClient();
+  const [draggedIdea, setDraggedIdea] = useState<Idea | null>(null);
+  const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
   // Fetch kanban categories
   const { data: categories = [], isLoading: isLoadingCategories, error: categoriesError } = useQuery<KanbanCategory[]>({
     queryKey: ['/api/kanban-categories'],
@@ -56,6 +61,89 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
     acc[category.key] = filteredIdeas.filter(idea => idea.type === category.key);
     return acc;
   }, {} as Record<string, Idea[]>);
+
+  // Mutation for updating idea category
+  const updateIdeaCategoryMutation = useMutation({
+    mutationFn: async ({ ideaId, newType }: { ideaId: string; newType: string }) => {
+      const response = await apiRequest('PATCH', `/api/ideas/${ideaId}/category`, { type: newType });
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate and refetch ideas
+      queryClient.invalidateQueries({ queryKey: ['/api/ideas'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update idea category:', error);
+    }
+  });
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, idea: Idea) => {
+    console.log('🟡 Drag started:', idea.title, 'from category:', idea.type);
+    setDraggedIdea(idea);
+    e.dataTransfer.effectAllowed = 'move';
+    // Store the complete idea data in DataTransfer for cross-event persistence
+    e.dataTransfer.setData('application/json', JSON.stringify(idea));
+    e.dataTransfer.setData('text/plain', idea.id);
+  };
+
+  const handleDragEnd = () => {
+    console.log('🔴 Drag ended');
+    setDraggedIdea(null);
+    setDragOverCategory(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, categoryKey: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverCategory(categoryKey);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverCategory(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, categoryKey: string) => {
+    e.preventDefault();
+    setDragOverCategory(null);
+    
+    // Get dragged idea from DataTransfer instead of React state
+    let draggedIdeaFromEvent: Idea | null = null;
+    try {
+      const ideaData = e.dataTransfer.getData('application/json');
+      if (ideaData) {
+        draggedIdeaFromEvent = JSON.parse(ideaData);
+      }
+    } catch (error) {
+      console.error('Failed to parse drag data:', error);
+    }
+
+    // Fallback to React state if DataTransfer fails
+    const effectiveDraggedIdea = draggedIdeaFromEvent || draggedIdea;
+    
+    console.log('🟢 Drop triggered:', { 
+      draggedIdea: effectiveDraggedIdea?.title, 
+      fromCategory: effectiveDraggedIdea?.type, 
+      toCategory: categoryKey,
+      source: draggedIdeaFromEvent ? 'DataTransfer' : 'React state'
+    });
+    
+    if (!effectiveDraggedIdea || effectiveDraggedIdea.type === categoryKey) {
+      console.log('⏹️ No change needed:', !effectiveDraggedIdea ? 'no dragged idea' : 'same category');
+      return; // No change needed
+    }
+
+    try {
+      console.log('🚀 Calling API to update category...');
+      const result = await updateIdeaCategoryMutation.mutateAsync({
+        ideaId: effectiveDraggedIdea.id,
+        newType: categoryKey
+      });
+      console.log('✅ API call successful:', result);
+    } catch (error) {
+      console.error('❌ Failed to move idea:', error);
+    }
+  };
 
   const isLoading = isLoadingCategories || isLoadingIdeas;
   const error = categoriesError || ideasError;
@@ -130,7 +218,15 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
               </Card>
 
               {/* Ideas Column */}
-              <div className="space-y-3">
+              <div 
+                className={`space-y-3 min-h-32 p-2 rounded transition-colors ${
+                  dragOverCategory === category.key ? 'bg-muted/50 border-2 border-dashed border-primary' : ''
+                }`}
+                onDragOver={(e) => handleDragOver(e, category.key)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, category.key)}
+                data-testid={`drop-zone-${category.key}`}
+              >
                 {categoryIdeas.length === 0 ? (
                   <Card className="border-dashed">
                     <CardContent className="p-6 text-center text-muted-foreground">
@@ -141,8 +237,13 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
                   categoryIdeas.map((idea) => (
                     <Card 
                       key={idea.id} 
-                      className="hover-elevate cursor-pointer"
+                      className={`hover-elevate cursor-grab active:cursor-grabbing transition-all ${
+                        draggedIdea?.id === idea.id ? 'opacity-50 rotate-2 scale-95' : ''
+                      }`}
                       data-testid={`idea-card-${idea.id}`}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, idea)}
+                      onDragEnd={handleDragEnd}
                     >
                       <CardHeader className="pb-2">
                         <CardTitle className="text-base line-clamp-2">

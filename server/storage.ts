@@ -33,6 +33,7 @@ export interface IStorage {
   getIdea(id: string): Promise<Idea | undefined>;
   createIdea(idea: InsertIdea): Promise<Idea>;
   updateIdea(id: string, updates: Partial<InsertIdea>): Promise<Idea | undefined>;
+  updateIdeaCategory(id: string, type: string): Promise<Idea | undefined>;
   deleteIdea(id: string): Promise<boolean>;
   
   // Summit Resources CRUD
@@ -379,6 +380,10 @@ export class MemStorage implements IStorage {
 
   async deleteIdea(id: string): Promise<boolean> {
     return this.ideas.delete(id);
+  }
+
+  async updateIdeaCategory(id: string, type: string): Promise<Idea | undefined> {
+    return this.updateIdea(id, { type });
   }
 
   // Summit Resources methods
