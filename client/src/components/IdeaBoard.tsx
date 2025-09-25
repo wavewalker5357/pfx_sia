@@ -157,9 +157,12 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="grid gap-4 pb-4 min-h-96" 
+             style={{
+               gridTemplateColumns: 'repeat(3, minmax(280px, 1fr))'
+             }}>
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="min-w-80 flex-shrink-0">
+            <div key={i} className="min-w-0">
               <Skeleton className="h-full min-h-96" />
             </div>
           ))}
@@ -185,14 +188,17 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
       </div>
 
       {/* Kanban Board Columns */}
-      <div className="flex gap-4 overflow-x-auto pb-4 min-h-96">
+      <div className="grid gap-4 pb-4 min-h-96 auto-cols-fr overflow-x-auto" 
+           style={{
+             gridTemplateColumns: `repeat(${Math.max(activeCategories.length, 1)}, minmax(280px, 1fr))`
+           }}>
         {activeCategories.map((category) => {
           const categoryIdeas = ideaGroups[category.key] || [];
           
           return (
             <div
               key={category.id}
-              className="min-w-80 flex-shrink-0"
+              className="min-w-0"
               data-testid={`column-${category.key}`}
             >
               {/* Column Header */}
