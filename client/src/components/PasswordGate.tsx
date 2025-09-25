@@ -4,8 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Lock, Users, Shield, Calendar } from 'lucide-react';
+import { Lock, Users, Shield, Calendar, Clock, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { CountdownTimer } from './CountdownTimer';
+import type { LandingPageSettings } from '@shared/schema';
 
 interface PasswordGateProps {
   onAttendeeAccess: () => void;
@@ -18,6 +21,25 @@ export default function PasswordGate({ onAttendeeAccess, onAdminAccess }: Passwo
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch landing page settings to determine which mode to show
+  const { data: landingPageSettings, isLoading: isLoadingSettings } = useQuery<LandingPageSettings>({
+    queryKey: ['/api/landing-page-settings'],
+    queryFn: async () => {
+      const response = await fetch('/api/landing-page-settings', {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        // If no settings exist, default to summit mode
+        if (response.status === 404) {
+          return { mode: 'summit' } as LandingPageSettings;
+        }
+        throw new Error('Failed to fetch landing page settings');
+      }
+      return response.json();
+    },
+    retry: false,
+  });
 
   const handleAttendeeLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +93,90 @@ export default function PasswordGate({ onAttendeeAccess, onAdminAccess }: Passwo
     }
   };
 
+  // Loading state
+  if (isLoadingSettings) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Determine current mode (default to summit if no settings)
+  const currentMode = landingPageSettings?.mode || 'summit';
+
+  // Maintenance Mode
+  if (currentMode === 'maintenance') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-2xl text-center">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Settings className="w-8 h-8 text-primary" />
+              <h1 className="text-4xl font-bold">AI Summit Ideas</h1>
+            </div>
+            <p className="text-xl text-muted-foreground mb-2">
+              Product & Engineering Summit 2025
+            </p>
+          </div>
+
+          {/* Maintenance Message */}
+          <Card>
+            <CardContent className="p-8">
+              <div className="text-center space-y-4">
+                <Settings className="w-16 h-16 text-muted-foreground mx-auto" />
+                <h2 className="text-2xl font-semibold">Platform Under Maintenance</h2>
+                <p className="text-lg text-muted-foreground" data-testid="text-maintenance-message">
+                  {landingPageSettings?.maintenanceMessage || 
+                   "The AI Summit platform is currently under construction. Please check back soon!"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Countdown Mode
+  if (currentMode === 'countdown') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-4xl">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Clock className="w-8 h-8 text-primary" />
+              <h1 className="text-4xl font-bold">AI Summit Ideas</h1>
+            </div>
+            <p className="text-xl text-muted-foreground mb-2">
+              Product & Engineering Summit 2025
+            </p>
+            <p className="text-muted-foreground">
+              September 30th - October 2nd • Collaborative Idea Platform
+            </p>
+          </div>
+
+          {/* Countdown Timer */}
+          <Card>
+            <CardContent className="p-8">
+              <CountdownTimer
+                targetDate={landingPageSettings?.summitStartDate ? new Date(landingPageSettings.summitStartDate) : new Date()}
+                message={landingPageSettings?.countdownMessage || "Time to start of the Pricefx Product & Engineering Summit"}
+                className="w-full"
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Summit Mode (default) - show login interface
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-4xl">
