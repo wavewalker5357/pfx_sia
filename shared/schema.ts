@@ -217,8 +217,8 @@ export const landingPageSettings = pgTable("landing_page_settings", {
   maintenanceMessage: text("maintenance_message").notNull().default("The AI Summit platform is currently under construction. Please check back soon!"),
   
   // Countdown mode settings  
-  countdownMessage: text("countdown_message").notNull().default("Time to start of the Pricefx Product & Engineering Summit"),
-  summitStartDate: timestamp("summit_start_date").notNull().default(sql`NOW() + INTERVAL '30 days'`),
+  countdownMessage: text("countdown_message").default("Time to start of the Pricefx Product & Engineering Summit"),
+  summitStartDate: timestamp("summit_start_date").default(sql`NOW() + INTERVAL '30 days'`),
   
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
