@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -137,6 +138,16 @@ export default function PasswordGate({ onAttendeeAccess, onAdminAccess }: Passwo
               </div>
             </CardContent>
           </Card>
+          
+          {/* Admin Access Link */}
+          <div className="mt-6 text-center">
+            <Link href="/admin-login">
+              <Button variant="ghost" size="sm" data-testid="link-admin-access">
+                <Shield className="w-4 h-4 mr-2" />
+                Admin Access
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -181,6 +192,16 @@ export default function PasswordGate({ onAttendeeAccess, onAdminAccess }: Passwo
               />
             </CardContent>
           </Card>
+          
+          {/* Admin Access Link */}
+          <div className="mt-6 text-center">
+            <Link href="/admin-login">
+              <Button variant="ghost" size="sm" data-testid="link-admin-access">
+                <Shield className="w-4 h-4 mr-2" />
+                Admin Access
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
