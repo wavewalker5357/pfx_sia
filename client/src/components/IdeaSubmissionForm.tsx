@@ -12,7 +12,7 @@ import { Plus, Lightbulb } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import type { FormField as FormFieldType, FormFieldOption } from '@shared/schema';
+import type { FormField as FormFieldType, FormFieldOption, KanbanCategory } from '@shared/schema';
 
 // Dynamic schema creation will be handled in the component
 
@@ -42,6 +42,18 @@ export default function IdeaSubmissionForm() {
       return response.json();
     },
     enabled: formFields.some(field => field.type === 'list'),
+  });
+
+  // Fetch kanban categories for the type field
+  const { data: kanbanCategories = [] } = useQuery<KanbanCategory[]>({
+    queryKey: ['/api/kanban-categories'],
+    queryFn: async () => {
+      const response = await fetch('/api/kanban-categories', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch kanban categories');
+      return response.json();
+    },
   });
 
   // Create dynamic schema based on form fields
@@ -151,9 +163,17 @@ export default function IdeaSubmissionForm() {
 
   // Render field based on type
   const renderField = (field: FormFieldType) => {
-    const fieldOptions = allFieldOptions.filter(option => 
-      option.fieldId === field.id && option.isActive === 'true'
-    );
+    // Special handling for the type field - use kanban categories instead of static options
+    const isTypeField = field.name === 'type';
+    
+    const fieldOptions = isTypeField 
+      ? [] // Don't use static field options for type field
+      : allFieldOptions.filter(option => 
+          option.fieldId === field.id && option.isActive === 'true'
+        );
+
+    // Get active kanban categories for type field
+    const activeCategories = kanbanCategories.filter(cat => cat.isActive === 'true').sort((a, b) => parseInt(a.order) - parseInt(b.order));
 
     switch (field.type) {
       case 'textarea':
@@ -251,11 +271,27 @@ export default function IdeaSubmissionForm() {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {fieldOptions.map((option) => (
-                      <SelectItem key={option.id} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
+                    {isTypeField ? (
+                      // Use kanban categories for type field
+                      activeCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.key}>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: category.color }}
+                            />
+                            {category.title}
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      // Use static field options for other list fields
+                      fieldOptions.map((option) => (
+                        <SelectItem key={option.id} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 {field.helpText && (
