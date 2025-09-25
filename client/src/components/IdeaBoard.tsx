@@ -128,8 +128,19 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
       source: draggedIdeaFromEvent ? 'DataTransfer' : 'React state'
     });
     
-    if (!effectiveDraggedIdea || effectiveDraggedIdea.type === categoryKey) {
-      console.log('⏹️ No change needed:', !effectiveDraggedIdea ? 'no dragged idea' : 'same category');
+    if (!effectiveDraggedIdea) {
+      console.log('⏹️ No dragged idea found');
+      return;
+    }
+
+    console.log('🔍 Category comparison:', {
+      ideaType: effectiveDraggedIdea.type,
+      targetCategory: categoryKey,
+      areEqual: effectiveDraggedIdea.type === categoryKey
+    });
+    
+    if (effectiveDraggedIdea.type === categoryKey) {
+      console.log('⏹️ No change needed: same category');
       return; // No change needed
     }
 
