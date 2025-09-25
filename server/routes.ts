@@ -591,9 +591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/landing-page-settings/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      console.log("PUT landing page settings - Body:", req.body);
       const validatedData = insertLandingPageSettingsSchema.partial().parse(req.body);
-      console.log("PUT landing page settings - Validated:", validatedData);
       const settings = await storage.updateLandingPageSettings(id, validatedData);
       
       if (!settings) {
@@ -603,7 +601,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(settings);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        console.log("PUT landing page settings - Validation error:", error.errors);
         res.status(400).json({ error: "Validation error", details: error.errors });
       } else {
         console.error("Error updating landing page settings:", error);
