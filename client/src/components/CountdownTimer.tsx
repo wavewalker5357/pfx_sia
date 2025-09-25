@@ -27,6 +27,12 @@ export function CountdownTimer({ targetDate, message = "Countdown", className = 
   const calculateTimeRemaining = (target: Date): TimeRemaining => {
     const now = new Date().getTime();
     const targetTime = new Date(target).getTime();
+    
+    // If target date is invalid, return zero time remaining
+    if (isNaN(targetTime)) {
+      return { days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 };
+    }
+    
     const difference = targetTime - now;
 
     if (difference <= 0) {
@@ -125,15 +131,21 @@ export function CountdownTimer({ targetDate, message = "Countdown", className = 
 
       {/* Target Date Display */}
       <div className="text-sm text-muted-foreground" data-testid="text-target-date">
-        {new Date(targetDate).toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZoneName: 'short'
-        })}
+        {(() => {
+          const date = new Date(targetDate);
+          if (isNaN(date.getTime())) {
+            return 'Invalid date';
+          }
+          return date.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZoneName: 'short'
+          });
+        })()}
       </div>
     </div>
   );

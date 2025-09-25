@@ -120,10 +120,17 @@ export function LandingPageSettingsAdmin() {
       updates.maintenanceMessage = settings.maintenanceMessage;
     } else if (settings.mode === 'countdown') {
       updates.countdownMessage = settings.countdownMessage;
-      // Convert summitStartDate to Date object if it's a string (from JSON)
-      updates.summitStartDate = typeof settings.summitStartDate === 'string' 
+      // Convert summitStartDate to Date object and validate it
+      const dateValue = typeof settings.summitStartDate === 'string' 
         ? new Date(settings.summitStartDate) 
         : settings.summitStartDate;
+      
+      // If date is invalid, use default summit date
+      if (dateValue && !isNaN(dateValue.getTime())) {
+        updates.summitStartDate = dateValue;
+      } else {
+        updates.summitStartDate = new Date('2025-10-01T08:00:00.000Z');
+      }
     }
     // For summit mode, we only need the mode field
     
