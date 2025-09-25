@@ -19,6 +19,8 @@ import {
   type InsertViewSettings,
   type LandingPageSettings,
   type InsertLandingPageSettings,
+  type SummitHomeContent,
+  type InsertSummitHomeContent,
   users,
   ideas,
   summitResources,
@@ -28,7 +30,8 @@ import {
   headerSettings,
   kanbanCategories,
   viewSettings,
-  landingPageSettings
+  landingPageSettings,
+  summitHomeContent
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -95,6 +98,11 @@ export interface IStorage {
   getLandingPageSettings(): Promise<LandingPageSettings | undefined>;
   createLandingPageSettings(settings: InsertLandingPageSettings): Promise<LandingPageSettings>;
   updateLandingPageSettings(id: string, updates: Partial<InsertLandingPageSettings>): Promise<LandingPageSettings | undefined>;
+
+  // Summit Home Content CRUD
+  getSummitHomeContent(): Promise<SummitHomeContent | undefined>;
+  createSummitHomeContent(content: InsertSummitHomeContent): Promise<SummitHomeContent>;
+  updateSummitHomeContent(id: string, updates: Partial<InsertSummitHomeContent>): Promise<SummitHomeContent | undefined>;
 
   // Additional methods needed by routes
   getIdeasWithFields(): Promise<(Idea & { dynamicFields?: IdeaDynamicField[] })[]>;
@@ -391,6 +399,29 @@ export class DatabaseStorage implements IStorage {
       .update(landingPageSettings)
       .set(updates)
       .where(eq(landingPageSettings.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Summit Home Content CRUD
+  async getSummitHomeContent(): Promise<SummitHomeContent | undefined> {
+    const [content] = await db.select().from(summitHomeContent).limit(1);
+    return content || undefined;
+  }
+
+  async createSummitHomeContent(insertContent: InsertSummitHomeContent): Promise<SummitHomeContent> {
+    const [content] = await db
+      .insert(summitHomeContent)
+      .values(insertContent)
+      .returning();
+    return content;
+  }
+
+  async updateSummitHomeContent(id: string, updates: Partial<InsertSummitHomeContent>): Promise<SummitHomeContent | undefined> {
+    const [updated] = await db
+      .update(summitHomeContent)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(summitHomeContent.id, id))
       .returning();
     return updated || undefined;
   }

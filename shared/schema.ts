@@ -230,3 +230,23 @@ export const insertLandingPageSettingsSchema = createInsertSchema(landingPageSet
 
 export type InsertLandingPageSettings = z.infer<typeof insertLandingPageSettingsSchema>;
 export type LandingPageSettings = typeof landingPageSettings.$inferSelect;
+
+// Summit home page content schema for admin-manageable rich content
+export const summitHomeContent = pgTable("summit_home_content", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull().default("Welcome to AI Summit"),
+  slug: text("slug").notNull().unique().default("home"),
+  content: text("content").notNull().default(""),
+  isPublished: varchar("is_published").notNull().default("true"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertSummitHomeContentSchema = createInsertSchema(summitHomeContent).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSummitHomeContent = z.infer<typeof insertSummitHomeContentSchema>;
+export type SummitHomeContent = typeof summitHomeContent.$inferSelect;
