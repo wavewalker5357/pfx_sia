@@ -184,9 +184,9 @@ export function LandingPageSettingsAdmin() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={getModeColor(settings.mode)} className="gap-1">
-            {getModeIcon(settings.mode)}
-            {settings.mode.charAt(0).toUpperCase() + settings.mode.slice(1)} Mode
+          <Badge variant={getModeColor(settings?.mode || 'summit')} className="gap-1">
+            {getModeIcon(settings?.mode || 'summit')}
+            {(settings?.mode || 'summit').charAt(0).toUpperCase() + (settings?.mode || 'summit').slice(1)} Mode
           </Badge>
           <Button 
             onClick={handleSave} 
@@ -203,7 +203,7 @@ export function LandingPageSettingsAdmin() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {getModeIcon(settings.mode)}
+            {getModeIcon(settings?.mode || 'summit')}
             Landing Page Mode
           </CardTitle>
           <CardDescription>
@@ -214,7 +214,7 @@ export function LandingPageSettingsAdmin() {
           <div className="space-y-2">
             <Label htmlFor="mode">Current Mode</Label>
             <Select 
-              value={settings.mode} 
+              value={settings?.mode || 'summit'} 
               onValueChange={(value) => handleFieldChange('mode', value)}
             >
               <SelectTrigger data-testid="select-landing-mode">
@@ -286,7 +286,7 @@ export function LandingPageSettingsAdmin() {
       </Card>
 
       {/* Maintenance Settings */}
-      {settings.mode === 'maintenance' && (
+      {settings?.mode === 'maintenance' && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -302,7 +302,7 @@ export function LandingPageSettingsAdmin() {
               <Label htmlFor="maintenanceMessage">Maintenance Message</Label>
               <Textarea
                 id="maintenanceMessage"
-                value={settings.maintenanceMessage}
+                value={settings?.maintenanceMessage || ''}
                 onChange={(e) => handleFieldChange('maintenanceMessage', e.target.value)}
                 placeholder="Enter the message to show during maintenance"
                 rows={3}
@@ -317,7 +317,7 @@ export function LandingPageSettingsAdmin() {
       )}
 
       {/* Countdown Settings */}
-      {settings.mode === 'countdown' && (
+      {settings?.mode === 'countdown' && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -333,7 +333,7 @@ export function LandingPageSettingsAdmin() {
               <Label htmlFor="countdownMessage">Countdown Message</Label>
               <Input
                 id="countdownMessage"
-                value={settings.countdownMessage}
+                value={settings?.countdownMessage || ''}
                 onChange={(e) => handleFieldChange('countdownMessage', e.target.value)}
                 placeholder="Enter the message to show with countdown"
                 data-testid="input-countdown-message"
@@ -353,7 +353,7 @@ export function LandingPageSettingsAdmin() {
               <Input
                 id="summitStartDate"
                 type="datetime-local"
-                value={settings.summitStartDate ? new Date(settings.summitStartDate).toISOString().slice(0, 16) : ''}
+                value={settings?.summitStartDate ? new Date(settings.summitStartDate).toISOString().slice(0, 16) : ''}
                 onChange={(e) => handleFieldChange('summitStartDate', new Date(e.target.value))}
                 data-testid="input-summit-start-date"
               />
@@ -362,14 +362,14 @@ export function LandingPageSettingsAdmin() {
               </p>
             </div>
 
-            {settings.summitStartDate && (
+            {settings?.summitStartDate && (
               <div className="p-3 border rounded-lg bg-muted/50">
                 <div className="text-sm font-medium">Preview</div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  Summit starts: {new Date(settings.summitStartDate).toLocaleString()}
+                  Summit starts: {settings?.summitStartDate ? new Date(settings.summitStartDate).toLocaleString() : ''}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Time remaining: {Math.max(0, Math.ceil((new Date(settings.summitStartDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days
+                  Time remaining: {settings?.summitStartDate ? Math.max(0, Math.ceil((new Date(settings.summitStartDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0} days
                 </div>
               </div>
             )}
@@ -378,7 +378,7 @@ export function LandingPageSettingsAdmin() {
       )}
 
       {/* Summit Mode Info */}
-      {settings.mode === 'summit' && (
+      {settings?.mode === 'summit' && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
