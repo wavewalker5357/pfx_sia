@@ -98,12 +98,22 @@ export function LandingPageSettingsAdmin() {
   const handleSave = () => {
     if (!settings || !isDirty) return;
     
+    // Only send relevant fields based on the selected mode
     const updates: Partial<InsertLandingPageSettings> = {
       mode: settings.mode,
-      maintenanceMessage: settings.maintenanceMessage,
-      countdownMessage: settings.countdownMessage,
-      summitStartDate: settings.summitStartDate,
     };
+
+    // Add mode-specific fields only when relevant
+    if (settings.mode === 'maintenance') {
+      updates.maintenanceMessage = settings.maintenanceMessage;
+    } else if (settings.mode === 'countdown') {
+      updates.countdownMessage = settings.countdownMessage;
+      // Convert summitStartDate to Date object if it's a string (from JSON)
+      updates.summitStartDate = typeof settings.summitStartDate === 'string' 
+        ? new Date(settings.summitStartDate) 
+        : settings.summitStartDate;
+    }
+    // For summit mode, we only need the mode field
     
     updateSettingsMutation.mutate(updates);
   };
