@@ -121,26 +121,9 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
     // Fallback to React state if DataTransfer fails
     const effectiveDraggedIdea = draggedIdeaFromEvent || draggedIdea;
     
-    console.log('🟢 Drop triggered:', { 
-      draggedIdea: effectiveDraggedIdea?.title, 
-      fromCategory: effectiveDraggedIdea?.type, 
-      toCategory: categoryKey,
-      source: draggedIdeaFromEvent ? 'DataTransfer' : 'React state'
-    });
+    console.log(`Dragged ${effectiveDraggedIdea?.title} to ${activeCategories.find(c => c.key === categoryKey)?.title}`);
     
-    if (!effectiveDraggedIdea) {
-      console.log('⏹️ No dragged idea found');
-      return;
-    }
-
-    console.log('🔍 Category comparison:', {
-      ideaType: effectiveDraggedIdea.type,
-      targetCategory: categoryKey,
-      areEqual: effectiveDraggedIdea.type === categoryKey
-    });
-    
-    if (effectiveDraggedIdea.type === categoryKey) {
-      console.log('⏹️ No change needed: same category');
+    if (!effectiveDraggedIdea || effectiveDraggedIdea.type === categoryKey) {
       return; // No change needed
     }
 
