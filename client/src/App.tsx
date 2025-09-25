@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { LogOut, BarChart3, Plus, Search, Shield } from "lucide-react";
+import { LogOut, BarChart3, Plus, Search, Shield, Home } from "lucide-react";
 
 import PasswordGate from "@/components/PasswordGate";
 import AdminLogin from "@/components/AdminLogin";
@@ -18,6 +18,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import SummitResourcesDropdown from "@/components/SummitResourcesDropdown";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import SummitHomePage from "@/components/SummitHomePage";
 
 function AttendeeApp() {
   return (
@@ -26,7 +27,11 @@ function AttendeeApp() {
 
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="submit" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="home" data-testid="tab-home" className="px-3">
+              <Home className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Home</span>
+            </TabsTrigger>
             <TabsTrigger value="submit" data-testid="tab-submit">
               <Plus className="w-4 h-4 mr-2" />
               Submit Ideas
@@ -40,6 +45,10 @@ function AttendeeApp() {
               Analytics
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="home" className="space-y-6">
+            <SummitHomePage />
+          </TabsContent>
 
           <TabsContent value="submit" className="space-y-6">
             <IdeaSubmissionForm />

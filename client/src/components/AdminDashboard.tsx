@@ -36,6 +36,7 @@ import type { SummitResource, InsertSummitResource, FormField, InsertFormField, 
 import AnalyticsDashboard from './AnalyticsDashboard';
 import { HeaderSettingsAdmin } from './HeaderSettingsAdmin';
 import { LandingPageSettingsAdmin } from './LandingPageSettingsAdmin';
+import { HomeContentAdmin } from './HomeContentAdmin';
 
 // Mock data for admin - TODO: remove mock functionality
 const recentActivity = [
@@ -516,6 +517,20 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-2">
               <Globe className="w-4 h-4" />
               Landing Page
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('home-content')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'home-content'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+            }`}
+            data-testid="tab-home-content"
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Home Content
             </div>
           </button>
         </nav>
@@ -1674,6 +1689,11 @@ export default function AdminDashboard() {
       {/* Landing Page Settings Tab */}
       {activeTab === 'landing-page-settings' && (
         <LandingPageSettingsAdmin />
+      )}
+
+      {/* Home Content Tab */}
+      {activeTab === 'home-content' && (
+        <HomeContentAdmin />
       )}
     </div>
   );

@@ -10,7 +10,8 @@ import {
   insertHeaderSettingsSchema,
   insertKanbanCategorySchema,
   insertViewSettingsSchema,
-  insertLandingPageSettingsSchema
+  insertLandingPageSettingsSchema,
+  insertSummitHomeContentSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -605,6 +606,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.error("Error updating landing page settings:", error);
         res.status(500).json({ error: "Failed to update landing page settings" });
+      }
+    }
+  });
+
+  // Summit Home Content API routes
+
+  // GET /api/home-content - Get published home content (for end users)
+  app.get("/api/home-content", async (req, res) => {
+    try {
+      const content = await storage.getSummitHomeContent();
+      
+      if (!content || content.isPublished !== 'true') {
+        return res.status(404).json({ error: "Home content not found or not published" });
+      }
+      
+      res.json(content);
+    } catch (error) {
+      console.error("Error fetching home content:", error);
+      res.status(500).json({ error: "Failed to fetch home content" });
+    }
+  });
+
+  // GET /api/admin/home-content - Get home content for admin (includes drafts)
+  app.get("/api/admin/home-content", async (req, res) => {
+    try {
+      const content = await storage.getSummitHomeContent();
+      
+      if (!content) {
+        // Return default content structure if none exists
+        return res.json({
+          id: null,
+          title: "Welcome to AI Summit",
+          slug: "home",
+          content: "",
+          isPublished: "false",
+          createdAt: null,
+          updatedAt: null
+        });
+      }
+      
+      res.json(content);
+    } catch (error) {
+      console.error("Error fetching admin home content:", error);
+      res.status(500).json({ error: "Failed to fetch home content" });
+    }
+  });
+
+  // POST /api/admin/home-content - Create home content
+  app.post("/api/admin/home-content", async (req, res) => {
+    try {
+      const validatedData = insertSummitHomeContentSchema.parse(req.body);
+      const content = await storage.createSummitHomeContent(validatedData);
+      res.status(201).json(content);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error creating home content:", error);
+        res.status(500).json({ error: "Failed to create home content" });
+      }
+    }
+  });
+
+  // PUT /api/admin/home-content/:id - Update home content
+  app.put("/api/admin/home-content/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertSummitHomeContentSchema.partial().parse(req.body);
+      const content = await storage.updateSummitHomeContent(id, validatedData);
+      
+      if (!content) {
+        return res.status(404).json({ error: "Home content not found" });
+      }
+      
+      res.json(content);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error updating home content:", error);
+        res.status(500).json({ error: "Failed to update home content" });
       }
     }
   });
