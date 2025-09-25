@@ -31,7 +31,7 @@ export function LandingPageSettingsAdmin() {
         mode: "summit",
         maintenanceMessage: "The AI Summit platform is currently under construction. Please check back soon!",
         countdownMessage: "Time to start of the Pricefx Product & Engineering Summit",
-        summitStartDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+        summitStartDate: new Date('2025-10-01T08:00:00.000Z') // 10/01/2025, 09:00 CET (08:00 UTC)
       };
       const response = await apiRequest('POST', '/api/landing-page-settings', defaultSettings);
       return response.json();
@@ -353,7 +353,7 @@ export function LandingPageSettingsAdmin() {
               <Input
                 id="summitStartDate"
                 type="datetime-local"
-                value={settings?.summitStartDate ? new Date(settings.summitStartDate).toISOString().slice(0, 16) : ''}
+                value={settings?.summitStartDate ? new Date(settings.summitStartDate).toISOString().slice(0, 16) : new Date('2025-10-01T08:00:00.000Z').toISOString().slice(0, 16)}
                 onChange={(e) => handleFieldChange('summitStartDate', new Date(e.target.value))}
                 data-testid="input-summit-start-date"
               />

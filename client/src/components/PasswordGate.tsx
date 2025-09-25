@@ -165,7 +165,7 @@ export default function PasswordGate({ onAttendeeAccess, onAdminAccess }: Passwo
           <Card>
             <CardContent className="p-8">
               <CountdownTimer
-                targetDate={landingPageSettings?.summitStartDate ? new Date(landingPageSettings.summitStartDate) : new Date()}
+                targetDate={landingPageSettings?.summitStartDate ? new Date(landingPageSettings.summitStartDate) : new Date('2025-10-01T08:00:00.000Z')}
                 message={landingPageSettings?.countdownMessage || "Time to start of the Pricefx Product & Engineering Summit"}
                 className="w-full"
               />
