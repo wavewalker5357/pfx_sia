@@ -9,7 +9,8 @@ import {
   insertIdeaDynamicFieldSchema,
   insertHeaderSettingsSchema,
   insertKanbanCategorySchema,
-  insertViewSettingsSchema
+  insertViewSettingsSchema,
+  insertLandingPageSettingsSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -553,6 +554,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.error("Error updating view settings:", error);
         res.status(500).json({ error: "Failed to update view settings" });
+      }
+    }
+  });
+
+  // Landing Page Settings API routes
+  
+  // GET /api/landing-page-settings - Get landing page settings
+  app.get("/api/landing-page-settings", async (req, res) => {
+    try {
+      const settings = await storage.getLandingPageSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching landing page settings:", error);
+      res.status(500).json({ error: "Failed to fetch landing page settings" });
+    }
+  });
+
+  // POST /api/landing-page-settings - Create landing page settings
+  app.post("/api/landing-page-settings", async (req, res) => {
+    try {
+      const validatedData = insertLandingPageSettingsSchema.parse(req.body);
+      const settings = await storage.createLandingPageSettings(validatedData);
+      res.status(201).json(settings);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error creating landing page settings:", error);
+        res.status(500).json({ error: "Failed to create landing page settings" });
+      }
+    }
+  });
+
+  // PUT /api/landing-page-settings/:id - Update landing page settings
+  app.put("/api/landing-page-settings/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertLandingPageSettingsSchema.partial().parse(req.body);
+      const settings = await storage.updateLandingPageSettings(id, validatedData);
+      
+      if (!settings) {
+        return res.status(404).json({ error: "Landing page settings not found" });
+      }
+      
+      res.json(settings);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error updating landing page settings:", error);
+        res.status(500).json({ error: "Failed to update landing page settings" });
       }
     }
   });

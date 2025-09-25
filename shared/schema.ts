@@ -207,3 +207,26 @@ export const insertViewSettingsSchema = createInsertSchema(viewSettings).omit({
 
 export type InsertViewSettings = z.infer<typeof insertViewSettingsSchema>;
 export type ViewSettings = typeof viewSettings.$inferSelect;
+
+// Landing page mode settings schema for controlling page state
+export const landingPageSettings = pgTable("landing_page_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mode: text("mode").notNull().default("summit"), // "maintenance", "countdown", "summit"
+  
+  // Maintenance mode settings
+  maintenanceMessage: text("maintenance_message").notNull().default("The AI Summit platform is currently under construction. Please check back soon!"),
+  
+  // Countdown mode settings  
+  countdownMessage: text("countdown_message").notNull().default("Time to start of the Pricefx Product & Engineering Summit"),
+  summitStartDate: timestamp("summit_start_date").notNull().default(sql`NOW() + INTERVAL '30 days'`),
+  
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertLandingPageSettingsSchema = createInsertSchema(landingPageSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertLandingPageSettings = z.infer<typeof insertLandingPageSettingsSchema>;
+export type LandingPageSettings = typeof landingPageSettings.$inferSelect;

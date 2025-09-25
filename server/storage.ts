@@ -17,6 +17,8 @@ import {
   type InsertKanbanCategory,
   type ViewSettings,
   type InsertViewSettings,
+  type LandingPageSettings,
+  type InsertLandingPageSettings,
   users,
   ideas,
   summitResources,
@@ -25,7 +27,8 @@ import {
   ideaDynamicFields,
   headerSettings,
   kanbanCategories,
-  viewSettings
+  viewSettings,
+  landingPageSettings
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -87,6 +90,11 @@ export interface IStorage {
   getViewSettings(): Promise<ViewSettings | undefined>;
   createViewSettings(settings: InsertViewSettings): Promise<ViewSettings>;
   updateViewSettings(id: string, updates: Partial<InsertViewSettings>): Promise<ViewSettings | undefined>;
+
+  // Landing Page Settings CRUD
+  getLandingPageSettings(): Promise<LandingPageSettings | undefined>;
+  createLandingPageSettings(settings: InsertLandingPageSettings): Promise<LandingPageSettings>;
+  updateLandingPageSettings(id: string, updates: Partial<InsertLandingPageSettings>): Promise<LandingPageSettings | undefined>;
 
   // Additional methods needed by routes
   getIdeasWithFields(): Promise<(Idea & { dynamicFields?: IdeaDynamicField[] })[]>;
@@ -360,6 +368,29 @@ export class DatabaseStorage implements IStorage {
       .update(viewSettings)
       .set(updates)
       .where(eq(viewSettings.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Landing Page Settings CRUD
+  async getLandingPageSettings(): Promise<LandingPageSettings | undefined> {
+    const [settings] = await db.select().from(landingPageSettings).limit(1);
+    return settings || undefined;
+  }
+
+  async createLandingPageSettings(insertSettings: InsertLandingPageSettings): Promise<LandingPageSettings> {
+    const [settings] = await db
+      .insert(landingPageSettings)
+      .values(insertSettings)
+      .returning();
+    return settings;
+  }
+
+  async updateLandingPageSettings(id: string, updates: Partial<InsertLandingPageSettings>): Promise<LandingPageSettings | undefined> {
+    const [updated] = await db
+      .update(landingPageSettings)
+      .set(updates)
+      .where(eq(landingPageSettings.id, id))
       .returning();
     return updated || undefined;
   }
