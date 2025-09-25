@@ -92,6 +92,18 @@ export function LandingPageSettingsAdmin() {
     if (settings) {
       setSettings({ ...settings, [field]: value });
       setIsDirty(true);
+    } else {
+      // If no settings exist, create default settings with the changed field
+      const defaultSettings: LandingPageSettings = {
+        id: '',
+        mode: "summit",
+        maintenanceMessage: "The AI Summit platform is currently under construction. Please check back soon!",
+        countdownMessage: "Time to start of the Pricefx Product & Engineering Summit",
+        summitStartDate: new Date('2025-10-01T08:00:00.000Z'),
+        updatedAt: new Date()
+      };
+      setSettings({ ...defaultSettings, [field]: value });
+      setIsDirty(true);
     }
   };
 
