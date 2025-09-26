@@ -60,6 +60,7 @@ export interface IStorage {
   // Form Fields CRUD
   getFormFields(): Promise<FormField[]>;
   getFormField(id: string): Promise<FormField | undefined>;
+  getFormFieldByName(name: string): Promise<FormField | undefined>;
   createFormField(field: InsertFormField): Promise<FormField>;
   updateFormField(id: string, updates: Partial<InsertFormField>): Promise<FormField | undefined>;
   deleteFormField(id: string): Promise<boolean>;
@@ -212,6 +213,11 @@ export class DatabaseStorage implements IStorage {
 
   async getFormField(id: string): Promise<FormField | undefined> {
     const [field] = await db.select().from(formFields).where(eq(formFields.id, id));
+    return field || undefined;
+  }
+
+  async getFormFieldByName(name: string): Promise<FormField | undefined> {
+    const [field] = await db.select().from(formFields).where(eq(formFields.name, name));
     return field || undefined;
   }
 
