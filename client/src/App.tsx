@@ -119,13 +119,17 @@ function ProtectedAttendeeRoute() {
   const { userType } = useAuth();
   const [, setLocation] = useLocation();
 
+  // Check both React state and sessionStorage to avoid race condition
+  const isAttendee = userType === 'attendee' || 
+    (userType === 'none' && sessionStorage.getItem('userType') === 'attendee');
+
   useEffect(() => {
-    if (userType !== 'attendee') {
+    if (!isAttendee) {
       setLocation('/');
     }
-  }, [userType, setLocation]);
+  }, [isAttendee, setLocation]);
 
-  if (userType !== 'attendee') {
+  if (!isAttendee) {
     return null; // Will redirect via useEffect
   }
 
