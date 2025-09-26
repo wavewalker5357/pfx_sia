@@ -129,11 +129,14 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
 
     const ideaId = effectiveDraggedIdea.id;
     
-    // Get the current state of the idea from our filtered ideas (not stale drag data)
-    const currentIdea = filteredIdeas.find(idea => idea.id === ideaId);
+    // Get the current state of the idea from our fresh data
+    const currentIdea = ideas.find(idea => idea.id === ideaId); // Use fresh ideas, not filtered
     const currentType = currentIdea?.type || effectiveDraggedIdea.type;
     
-    console.log(`🟡 Dragging "${effectiveDraggedIdea.title}" from ${currentType} to ${categoryKey}`);
+    console.log(`🟡 Dragging "${effectiveDraggedIdea.title}"`);
+    console.log(`   📋 Current type in database: ${currentIdea?.type || 'unknown'}`);
+    console.log(`   📋 Effective current type: ${currentType}`);
+    console.log(`   🎯 Target category: ${categoryKey}`);
     
     if (currentType === categoryKey) {
       console.log('💡 No change needed - idea already in target category');
