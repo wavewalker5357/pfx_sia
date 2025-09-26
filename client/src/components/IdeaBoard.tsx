@@ -147,7 +147,9 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
       const ideaData = e.dataTransfer.getData('application/json');
       if (ideaData) {
         draggedIdeaFromEvent = JSON.parse(ideaData);
-        console.log(`📦 DataTransfer idea: ${draggedIdeaFromEvent.title} (${draggedIdeaFromEvent.id})`);
+        if (draggedIdeaFromEvent) {
+          console.log(`📦 DataTransfer idea: ${draggedIdeaFromEvent.title} (${draggedIdeaFromEvent.id})`);
+        }
       }
     } catch (error) {
       console.error('Failed to parse drag data:', error);

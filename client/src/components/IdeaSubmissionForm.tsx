@@ -59,9 +59,15 @@ export default function IdeaSubmissionForm() {
     },
   });
 
-  // Create dynamic schema based on form fields
-  const formSchema = z.object(
-    formFields.reduce((acc, field) => {
+  // Create schema with system Category field + dynamic fields
+  const createFormSchema = () => {
+    const baseSchema = {
+      // System field: Type/Category (always required)
+      type: z.string().min(1, 'Category is required'),
+    };
+    
+    // Add dynamic fields
+    formFields.forEach((field) => {
       let validation: any;
       
       switch (field.type) {
@@ -81,28 +87,37 @@ export default function IdeaSubmissionForm() {
             : z.string().optional();
       }
       
-      acc[field.name] = validation;
-      return acc;
-    }, {} as Record<string, any>)
-  );
+      (baseSchema as any)[field.name] = validation;
+    });
+    
+    return z.object(baseSchema);
+  };
+
+  const formSchema = createFormSchema();
 
   type FormData = z.infer<typeof formSchema>;
 
-  // Create default values based on form fields
-  const defaultValues = formFields.reduce((acc, field) => {
-    acc[field.name] = '';
-    return acc;
-  }, {} as Record<string, any>);
+  // Create default values with system Type field + dynamic fields
+  const defaultValues = {
+    // System field: Type/Category
+    type: '',
+    
+    // Dynamic fields based on form configuration
+    ...formFields.reduce((acc, field) => {
+      acc[field.name] = '';
+      return acc;
+    }, {} as Record<string, any>)
+  };
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues,
   });
 
-  // Create idea mutation with dynamic field support
+  // Create idea mutation with system Category field + dynamic field support
   const createIdeaMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      // Create main idea record with core fields
+      // Create main idea record with core fields (including system Type/Category)
       const coreFields = ['submitter_name', 'idea_title', 'description', 'component', 'tag', 'type'];
       const ideaData = {
         name: data.submitter_name || '',
@@ -110,7 +125,7 @@ export default function IdeaSubmissionForm() {
         description: data.description || '',
         component: data.component || '',
         tag: data.tag || '',
-        type: data.type || '',
+        type: data.type || '', // Use type field directly
       };
       
       console.log('Submitting idea data:', ideaData);
@@ -188,17 +203,10 @@ export default function IdeaSubmissionForm() {
 
   // Render field based on type
   const renderField = (field: FormFieldType) => {
-    // Special handling for the type field - use kanban categories instead of static options
-    const isTypeField = field.name === 'type';
-    
-    const fieldOptions = isTypeField 
-      ? [] // Don't use static field options for type field
-      : allFieldOptions.filter(option => 
-          option.fieldId === field.id && option.isActive === 'true'
-        );
-
-    // Get active kanban categories for type field
-    const activeCategories = kanbanCategories.filter(cat => cat.isActive === 'true').sort((a, b) => parseInt(a.order) - parseInt(b.order));
+    // Get field options for list-type fields
+    const fieldOptions = allFieldOptions.filter(option => 
+      option.fieldId === field.id && option.isActive === 'true'
+    );
 
     switch (field.type) {
       case 'textarea':
@@ -281,7 +289,7 @@ export default function IdeaSubmissionForm() {
         );
 
       case 'list':
-        const allowUserAdditions = field.allowUserAdditions === 'true' && !isTypeField;
+        const allowUserAdditions = field.allowUserAdditions === 'true';
         
         if (allowUserAdditions) {
           // Render Combobox for fields that allow user additions
@@ -401,27 +409,11 @@ export default function IdeaSubmissionForm() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {isTypeField ? (
-                        // Use kanban categories for type field
-                        activeCategories.map((category) => (
-                          <SelectItem key={category.id} value={category.key}>
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: category.color }}
-                              />
-                              {category.title}
-                            </div>
-                          </SelectItem>
-                        ))
-                      ) : (
-                        // Use static field options for other list fields
-                        fieldOptions.map((option) => (
-                          <SelectItem key={option.id} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))
-                      )}
+                      {fieldOptions.map((option) => (
+                        <SelectItem key={option.id} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   {field.helpText && (
@@ -490,7 +482,43 @@ export default function IdeaSubmissionForm() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Render form fields dynamically based on admin configuration */}
+            {/* System Category Field - Always present */}
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => {
+                const activeCategories = kanbanCategories.filter(cat => cat.isActive === 'true').sort((a, b) => parseInt(a.order) - parseInt(b.order));
+                
+                return (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-category">
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {activeCategories.map((category) => (
+                          <SelectItem key={category.id} value={category.key}>
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: category.color }}
+                              />
+                              {category.title}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+            
+            {/* Render dynamic form fields based on admin configuration */}
             <div className="space-y-4">
               {formFields
                 .filter(field => field.isActive === 'true')
