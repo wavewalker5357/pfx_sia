@@ -441,6 +441,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertKanbanCategorySchema.parse(req.body);
       const category = await storage.createKanbanCategory(validatedData);
+      
+      // Auto-sync: Create matching form field option for type field
+      try {
+        const typeField = await storage.getFormFieldByName('type');
+        if (typeField) {
+          // Get highest order number for the type field options
+          const existingOptions = await storage.getFormFieldOptions(typeField.id);
+          const nextOrder = Math.max(0, ...existingOptions.map(opt => parseInt(opt.order || '0'))) + 1;
+          
+          await storage.createFormFieldOption({
+            fieldId: typeField.id,
+            value: category.key, // Use kanban key as form option value
+            label: category.title, // Use kanban title as form option label
+            order: nextOrder.toString(),
+            isActive: category.isActive
+          });
+        }
+      } catch (syncError) {
+        console.warn("Failed to sync kanban category to form field options:", syncError);
+        // Don't fail the main operation if sync fails
+      }
+      
       res.status(201).json(category);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -480,6 +502,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Kanban category not found" });
       }
       
+      // Auto-sync: Update matching form field option for type field
+      try {
+        const typeField = await storage.getFormFieldByName('type');
+        if (typeField) {
+          const existingOptions = await storage.getFormFieldOptions(typeField.id);
+          const matchingOption = existingOptions.find(opt => opt.value === category.key);
+          
+          if (matchingOption && (validatedData.title || validatedData.isActive !== undefined)) {
+            await storage.updateFormFieldOption(matchingOption.id, {
+              label: validatedData.title || matchingOption.label,
+              isActive: validatedData.isActive !== undefined ? validatedData.isActive : matchingOption.isActive
+            });
+          }
+        }
+      } catch (syncError) {
+        console.warn("Failed to sync kanban category update to form field options:", syncError);
+        // Don't fail the main operation if sync fails
+      }
+      
       res.json(category);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -495,10 +536,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/kanban-categories/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      
+      // Get the category before deleting for sync purposes
+      const categoryToDelete = await storage.getKanbanCategory(id);
+      if (!categoryToDelete) {
+        return res.status(404).json({ error: "Kanban category not found" });
+      }
+      
       const deleted = await storage.deleteKanbanCategory(id);
       
       if (!deleted) {
         return res.status(404).json({ error: "Kanban category not found" });
+      }
+      
+      // Auto-sync: Delete matching form field option for type field
+      try {
+        const typeField = await storage.getFormFieldByName('type');
+        if (typeField) {
+          const existingOptions = await storage.getFormFieldOptions(typeField.id);
+          const matchingOption = existingOptions.find(opt => opt.value === categoryToDelete.key);
+          
+          if (matchingOption) {
+            await storage.deleteFormFieldOption(matchingOption.id);
+          }
+        }
+      } catch (syncError) {
+        console.warn("Failed to sync kanban category deletion to form field options:", syncError);
+        // Don't fail the main operation if sync fails
       }
       
       res.status(204).send();
