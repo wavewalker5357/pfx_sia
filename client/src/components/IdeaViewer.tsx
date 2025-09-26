@@ -50,8 +50,8 @@ export default function IdeaViewer() {
     },
   });
 
-  const uniqueComponents = Array.from(new Set(ideas.map(idea => idea.component)));
-  const uniqueTags = Array.from(new Set(ideas.map(idea => idea.tag)));
+  const uniqueComponents = Array.from(new Set(ideas.map(idea => idea.component).filter(Boolean)));
+  const uniqueTags = Array.from(new Set(ideas.map(idea => idea.tag).filter(Boolean)));
 
   return (
     <div className="space-y-6">
