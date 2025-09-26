@@ -19,6 +19,7 @@ import SummitResourcesDropdown from "@/components/SummitResourcesDropdown";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import SummitHomePage from "@/components/SummitHomePage";
+import { Footer } from "@/components/Footer";
 
 function AttendeeApp() {
   return (
@@ -63,6 +64,7 @@ function AttendeeApp() {
           </TabsContent>
         </Tabs>
       </main>
+      <Footer />
     </div>
   );
 }

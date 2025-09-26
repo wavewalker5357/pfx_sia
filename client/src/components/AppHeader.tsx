@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Shield, LogOut, Calendar } from 'lucide-react';
 import { SummitResourcesDropdown } from '@/components/SummitResourcesDropdown';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useQuery } from '@tanstack/react-query';
 import type { HeaderSettings } from '@shared/schema';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AppHeaderProps {
   isAdmin?: boolean;
@@ -60,6 +62,15 @@ export function AppHeader({ isAdmin = false }: AppHeaderProps) {
 
   // Use header settings or fallback to defaults
   const activeSettings = headerSettings || defaultSettings;
+
+  // Logout functionality
+  const { logout } = useAuth();
+  const [, setLocation] = useLocation();
+
+  const handleLogout = () => {
+    logout(); // Clears sessionStorage and React state
+    setLocation('/'); // Redirect to login page
+  };
 
   // Handle responsive breakpoints with JavaScript (since CSS custom properties can't be used in media queries)
   const [isMobile, setIsMobile] = useState(false);
@@ -231,7 +242,7 @@ export function AppHeader({ isAdmin = false }: AppHeaderProps) {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => window.location.reload()}
+              onClick={handleLogout}
               data-testid={isAdmin ? "button-admin-logout" : "button-logout"}
               className="hidden sm:flex"
             >
@@ -243,7 +254,7 @@ export function AppHeader({ isAdmin = false }: AppHeaderProps) {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => window.location.reload()}
+              onClick={handleLogout}
               data-testid={isAdmin ? "button-admin-logout-mobile" : "button-logout-mobile"}
               className="sm:hidden"
             >
