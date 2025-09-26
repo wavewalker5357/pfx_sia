@@ -270,52 +270,161 @@ export default function IdeaSubmissionForm() {
         );
 
       case 'list':
-        return (
-          <FormField
-            key={field.id}
-            control={form.control}
-            name={field.name}
-            render={({ field: formField }) => (
-              <FormItem>
-                <FormLabel>{field.label}</FormLabel>
-                <Select onValueChange={formField.onChange} defaultValue={formField.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid={`select-${field.name}`}>
-                      <SelectValue placeholder={field.placeholder || `Select ${field.label.toLowerCase()}`} />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {isTypeField ? (
-                      // Use kanban categories for type field
-                      activeCategories.map((category) => (
-                        <SelectItem key={category.id} value={category.key}>
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: category.color }}
-                            />
-                            {category.title}
-                          </div>
-                        </SelectItem>
-                      ))
-                    ) : (
-                      // Use static field options for other list fields
-                      fieldOptions.map((option) => (
-                        <SelectItem key={option.id} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))
+        const allowUserAdditions = field.allowUserAdditions === 'true' && !isTypeField;
+        
+        if (allowUserAdditions) {
+          // Render Combobox for fields that allow user additions
+          return (
+            <FormField
+              key={field.id}
+              control={form.control}
+              name={field.name}
+              render={({ field: formField }) => {
+                const [open, setOpen] = useState(false);
+                const [searchValue, setSearchValue] = useState('');
+                
+                const handleCreateOption = () => {
+                  if (searchValue.trim() && !fieldOptions.some(opt => opt.value === searchValue.trim())) {
+                    const nextOrder = Math.max(0, ...fieldOptions.map(opt => parseInt(opt.order || '0'))) + 1;
+                    addFieldOptionMutation.mutate({
+                      fieldId: field.id,
+                      value: searchValue.trim(),
+                      label: searchValue.trim(),
+                      order: nextOrder.toString()
+                    });
+                    formField.onChange(searchValue.trim());
+                    setSearchValue('');
+                    setOpen(false);
+                  }
+                };
+
+                return (
+                  <FormItem>
+                    <FormLabel>{field.label}</FormLabel>
+                    <Popover open={open} onOpenChange={setOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className="w-full justify-between"
+                            data-testid={`combobox-${field.name}`}
+                          >
+                            {formField.value
+                              ? fieldOptions.find((option) => option.value === formField.value)?.label || formField.value
+                              : field.placeholder || `Select ${field.label.toLowerCase()}`}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0">
+                        <Command>
+                          <CommandInput 
+                            placeholder={`Search or add ${field.label.toLowerCase()}...`}
+                            value={searchValue}
+                            onValueChange={setSearchValue}
+                          />
+                          <CommandList>
+                            <CommandEmpty>
+                              {searchValue.trim() ? (
+                                <div className="p-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={handleCreateOption}
+                                    className="w-full"
+                                    data-testid={`button-add-${field.name}`}
+                                  >
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Add "{searchValue.trim()}"
+                                  </Button>
+                                </div>
+                              ) : (
+                                `No ${field.label.toLowerCase()} found.`
+                              )}
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {fieldOptions.map((option) => (
+                                <CommandItem
+                                  key={option.id}
+                                  value={option.value}
+                                  onSelect={(currentValue) => {
+                                    formField.onChange(currentValue === formField.value ? "" : currentValue);
+                                    setOpen(false);
+                                    setSearchValue('');
+                                  }}
+                                >
+                                  <Check
+                                    className={`mr-2 h-4 w-4 ${
+                                      formField.value === option.value ? "opacity-100" : "opacity-0"
+                                    }`}
+                                  />
+                                  {option.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {field.helpText && (
+                      <p className="text-sm text-muted-foreground">{field.helpText}</p>
                     )}
-                  </SelectContent>
-                </Select>
-                {field.helpText && (
-                  <p className="text-sm text-muted-foreground">{field.helpText}</p>
-                )}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        );
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+          );
+        } else {
+          // Render regular Select for fields that don't allow user additions
+          return (
+            <FormField
+              key={field.id}
+              control={form.control}
+              name={field.name}
+              render={({ field: formField }) => (
+                <FormItem>
+                  <FormLabel>{field.label}</FormLabel>
+                  <Select onValueChange={formField.onChange} defaultValue={formField.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid={`select-${field.name}`}>
+                        <SelectValue placeholder={field.placeholder || `Select ${field.label.toLowerCase()}`} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {isTypeField ? (
+                        // Use kanban categories for type field
+                        activeCategories.map((category) => (
+                          <SelectItem key={category.id} value={category.key}>
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: category.color }}
+                              />
+                              {category.title}
+                            </div>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        // Use static field options for other list fields
+                        fieldOptions.map((option) => (
+                          <SelectItem key={option.id} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {field.helpText && (
+                    <p className="text-sm text-muted-foreground">{field.helpText}</p>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          );
+        }
 
       default: // text
         return (
