@@ -175,6 +175,17 @@ export default function IdeaSubmissionForm() {
     createIdeaMutation.mutate(data);
   };
 
+  // State for combobox fields
+  const [fieldStates, setFieldStates] = useState<Record<string, { open: boolean; searchValue: string }>>({});
+
+  const getFieldState = (fieldId: string) => fieldStates[fieldId] || { open: false, searchValue: '' };
+  const setFieldState = (fieldId: string, state: { open?: boolean; searchValue?: string }) => {
+    setFieldStates(prev => ({
+      ...prev,
+      [fieldId]: { ...getFieldState(fieldId), ...state }
+    }));
+  };
+
   // Render field based on type
   const renderField = (field: FormFieldType) => {
     // Special handling for the type field - use kanban categories instead of static options
@@ -280,8 +291,7 @@ export default function IdeaSubmissionForm() {
               control={form.control}
               name={field.name}
               render={({ field: formField }) => {
-                const [open, setOpen] = useState(false);
-                const [searchValue, setSearchValue] = useState('');
+                const { open, searchValue } = getFieldState(field.id);
                 
                 const handleCreateOption = () => {
                   if (searchValue.trim() && !fieldOptions.some(opt => opt.value === searchValue.trim())) {
@@ -293,15 +303,14 @@ export default function IdeaSubmissionForm() {
                       order: nextOrder.toString()
                     });
                     formField.onChange(searchValue.trim());
-                    setSearchValue('');
-                    setOpen(false);
+                    setFieldState(field.id, { searchValue: '', open: false });
                   }
                 };
 
                 return (
                   <FormItem>
                     <FormLabel>{field.label}</FormLabel>
-                    <Popover open={open} onOpenChange={setOpen}>
+                    <Popover open={open} onOpenChange={(isOpen) => setFieldState(field.id, { open: isOpen })}>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
@@ -323,7 +332,7 @@ export default function IdeaSubmissionForm() {
                           <CommandInput 
                             placeholder={`Search or add ${field.label.toLowerCase()}...`}
                             value={searchValue}
-                            onValueChange={setSearchValue}
+                            onValueChange={(value) => setFieldState(field.id, { searchValue: value })}
                           />
                           <CommandList>
                             <CommandEmpty>
@@ -350,8 +359,7 @@ export default function IdeaSubmissionForm() {
                                   value={option.value}
                                   onSelect={(currentValue) => {
                                     formField.onChange(currentValue === formField.value ? "" : currentValue);
-                                    setOpen(false);
-                                    setSearchValue('');
+                                    setFieldState(field.id, { open: false, searchValue: '' });
                                   }}
                                 >
                                   <Check
