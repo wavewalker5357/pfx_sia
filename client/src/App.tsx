@@ -71,8 +71,12 @@ function AttendeeApp() {
 
 // Protected Admin Route Component
 function ProtectedAdminRoute() {
-  const { isAdmin } = useAuth();
+  const { userType } = useAuth();
   const [, setLocation] = useLocation();
+
+  // Check both React state and sessionStorage to avoid race condition
+  const isAdmin = userType === 'admin' || 
+    (userType === 'none' && sessionStorage.getItem('userType') === 'admin');
 
   useEffect(() => {
     if (!isAdmin) {
