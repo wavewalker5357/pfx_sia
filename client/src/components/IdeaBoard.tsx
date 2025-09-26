@@ -18,6 +18,7 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
   const queryClient = useQueryClient();
   const [draggedIdea, setDraggedIdea] = useState<Idea | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
+  const [pendingOperations, setPendingOperations] = useState<Map<string, string>>(new Map()); // ideaId -> target category
   // Fetch kanban categories
   const { data: categories = [], isLoading: isLoadingCategories, error: categoriesError } = useQuery<KanbanCategory[]>({
     queryKey: ['/api/kanban-categories'],
@@ -62,7 +63,7 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
     return acc;
   }, {} as Record<string, Idea[]>);
 
-  // Mutation for updating idea category
+  // Mutation for updating idea category with proper cancellation handling
   const updateIdeaCategoryMutation = useMutation({
     mutationFn: async ({ ideaId, newType }: { ideaId: string; newType: string }) => {
       const response = await apiRequest('PATCH', `/api/ideas/${ideaId}/category`, { type: newType });
@@ -121,21 +122,54 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
     // Fallback to React state if DataTransfer fails
     const effectiveDraggedIdea = draggedIdeaFromEvent || draggedIdea;
     
-    console.log(`Dragged ${effectiveDraggedIdea?.title} to ${activeCategories.find(c => c.key === categoryKey)?.title}`);
+    if (!effectiveDraggedIdea) {
+      console.warn('No dragged idea found');
+      return;
+    }
+
+    const ideaId = effectiveDraggedIdea.id;
     
-    if (!effectiveDraggedIdea || effectiveDraggedIdea.type === categoryKey) {
+    // Get the current state of the idea from our filtered ideas (not stale drag data)
+    const currentIdea = filteredIdeas.find(idea => idea.id === ideaId);
+    const currentType = currentIdea?.type || effectiveDraggedIdea.type;
+    
+    console.log(`🟡 Dragging "${effectiveDraggedIdea.title}" from ${currentType} to ${categoryKey}`);
+    
+    if (currentType === categoryKey) {
+      console.log('💡 No change needed - idea already in target category');
       return; // No change needed
     }
 
+    // Check if there's already a pending operation for this idea
+    const existingTarget = pendingOperations.get(ideaId);
+    if (existingTarget) {
+      // Update the target for the pending operation
+      console.log(`🔄 Updating pending operation target from ${existingTarget} to ${categoryKey}`);
+      setPendingOperations(prev => new Map(prev).set(ideaId, categoryKey));
+      return;
+    }
+
+    // Start new operation
     try {
-      console.log('🚀 Calling API to update category...');
+      // Mark operation as pending
+      setPendingOperations(prev => new Map(prev).set(ideaId, categoryKey));
+      console.log('🚀 Starting category update operation...');
+      
       const result = await updateIdeaCategoryMutation.mutateAsync({
-        ideaId: effectiveDraggedIdea.id,
+        ideaId: ideaId,
         newType: categoryKey
       });
+      
       console.log('✅ API call successful:', result);
     } catch (error) {
       console.error('❌ Failed to move idea:', error);
+    } finally {
+      // Clear pending operation
+      setPendingOperations(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(ideaId);
+        return newMap;
+      });
     }
   };
 
