@@ -674,6 +674,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Data Migration API routes
+  
+  // POST /api/admin/migrate-categories - Run category data migration
+  app.post("/api/admin/migrate-categories", async (req, res) => {
+    try {
+      // Import migration functions
+      const { migrateIdeaCategories, validateFormFieldSync } = await import("./data-migration");
+      
+      const { fix = false, defaultCategory } = req.body;
+      
+      // Run migration analysis/fix
+      const migrationResult = await migrateIdeaCategories(fix, defaultCategory);
+      
+      // Run sync validation
+      const syncValidation = await validateFormFieldSync();
+      
+      res.json({
+        migration: migrationResult,
+        validation: syncValidation,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error running category migration:", error);
+      res.status(500).json({ error: "Failed to run category migration" });
+    }
+  });
+
   // Summit Home Content API routes
 
   // GET /api/home-content - Get published home content (for end users)
