@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Calendar, Tag, User } from 'lucide-react';
 import type { Idea, KanbanCategory } from '@shared/schema';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 
 interface IdeaBoardProps {
@@ -18,7 +18,7 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
   const queryClient = useQueryClient();
   const [draggedIdea, setDraggedIdea] = useState<Idea | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
-  const [pendingOperations, setPendingOperations] = useState<Map<string, string>>(new Map()); // ideaId -> target category
+  const pendingUpdatesRef = useRef<Map<string, { target: string; timeoutId: NodeJS.Timeout }>>(new Map()); // ideaId -> {target, timeoutId}
   // Fetch kanban categories
   const { data: categories = [], isLoading: isLoadingCategories, error: categoriesError } = useQuery<KanbanCategory[]>({
     queryKey: ['/api/kanban-categories'],
@@ -89,7 +89,7 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
   };
 
   const handleDragEnd = () => {
-    console.log('🔴 Drag ended');
+    console.log('🔴 Drag ended, clearing dragged idea');
     setDraggedIdea(null);
     setDragOverCategory(null);
   };
@@ -97,14 +97,47 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
   const handleDragOver = (e: React.DragEvent, categoryKey: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    setDragOverCategory(categoryKey);
+    if (dragOverCategory !== categoryKey) {
+      console.log(`🔵 Drag over: ${categoryKey}`);
+      setDragOverCategory(categoryKey);
+    }
   };
 
   const handleDragLeave = () => {
+    console.log('🟠 Drag leave');
     setDragOverCategory(null);
   };
 
+  // Execute debounced update for an idea
+  const executeUpdate = async (ideaId: string, targetCategory: string) => {
+    // Get current state to check if we still need to move
+    const currentIdea = ideas.find(idea => idea.id === ideaId);
+    const currentType = currentIdea?.type;
+    
+    console.log(`🚀 Executing update for ${ideaId}: ${currentType} -> ${targetCategory}`);
+    
+    if (currentType === targetCategory) {
+      console.log('💡 No change needed - already in target category');
+      return;
+    }
+
+    try {
+      const result = await updateIdeaCategoryMutation.mutateAsync({
+        ideaId: ideaId,
+        newType: targetCategory
+      });
+      
+      console.log('✅ Update successful:', result);
+    } catch (error) {
+      console.error('❌ Update failed:', error);
+    } finally {
+      // Clean up pending update
+      pendingUpdatesRef.current.delete(ideaId);
+    }
+  };
+
   const handleDrop = async (e: React.DragEvent, categoryKey: string) => {
+    console.log(`🎯 DROP EVENT: Target category = ${categoryKey}, timestamp = ${Date.now()}`);
     e.preventDefault();
     setDragOverCategory(null);
     
@@ -114,6 +147,7 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
       const ideaData = e.dataTransfer.getData('application/json');
       if (ideaData) {
         draggedIdeaFromEvent = JSON.parse(ideaData);
+        console.log(`📦 DataTransfer idea: ${draggedIdeaFromEvent.title} (${draggedIdeaFromEvent.id})`);
       }
     } catch (error) {
       console.error('Failed to parse drag data:', error);
@@ -123,57 +157,42 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
     const effectiveDraggedIdea = draggedIdeaFromEvent || draggedIdea;
     
     if (!effectiveDraggedIdea) {
-      console.warn('No dragged idea found');
+      console.warn('⚠️ No dragged idea found in DataTransfer or React state');
       return;
     }
 
     const ideaId = effectiveDraggedIdea.id;
+    console.log(`🆔 Processing drop for idea: ${effectiveDraggedIdea.title} (${ideaId})`);
     
     // Get the current state of the idea from our fresh data
-    const currentIdea = ideas.find(idea => idea.id === ideaId); // Use fresh ideas, not filtered
+    const currentIdea = ideas.find(idea => idea.id === ideaId);
     const currentType = currentIdea?.type || effectiveDraggedIdea.type;
     
-    console.log(`🟡 Dragging "${effectiveDraggedIdea.title}"`);
-    console.log(`   📋 Current type in database: ${currentIdea?.type || 'unknown'}`);
-    console.log(`   📋 Effective current type: ${currentType}`);
-    console.log(`   🎯 Target category: ${categoryKey}`);
+    console.log(`🟡 Dragging "${effectiveDraggedIdea.title}" from ${currentType} to ${categoryKey}`);
     
     if (currentType === categoryKey) {
       console.log('💡 No change needed - idea already in target category');
       return; // No change needed
     }
 
-    // Check if there's already a pending operation for this idea
-    const existingTarget = pendingOperations.get(ideaId);
-    if (existingTarget) {
-      // Update the target for the pending operation
-      console.log(`🔄 Updating pending operation target from ${existingTarget} to ${categoryKey}`);
-      setPendingOperations(prev => new Map(prev).set(ideaId, categoryKey));
-      return;
+    // Debounced update approach - clear previous timeout and set new one
+    const pendingUpdates = pendingUpdatesRef.current;
+    const existingUpdate = pendingUpdates.get(ideaId);
+    
+    if (existingUpdate) {
+      // Clear previous timeout
+      clearTimeout(existingUpdate.timeoutId);
+      console.log(`🔄 Updating target from ${existingUpdate.target} to ${categoryKey}`);
+    } else {
+      console.log(`📝 Scheduling new update: ${ideaId} -> ${categoryKey}`);
     }
 
-    // Start new operation
-    try {
-      // Mark operation as pending
-      setPendingOperations(prev => new Map(prev).set(ideaId, categoryKey));
-      console.log('🚀 Starting category update operation...');
-      
-      const result = await updateIdeaCategoryMutation.mutateAsync({
-        ideaId: ideaId,
-        newType: categoryKey
-      });
-      
-      console.log('✅ API call successful:', result);
-    } catch (error) {
-      console.error('❌ Failed to move idea:', error);
-    } finally {
-      // Clear pending operation
-      setPendingOperations(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(ideaId);
-        return newMap;
-      });
-    }
+    // Set new debounced update
+    const timeoutId = setTimeout(() => {
+      executeUpdate(ideaId, categoryKey);
+    }, 300); // 300ms debounce delay
+
+    pendingUpdates.set(ideaId, { target: categoryKey, timeoutId });
   };
 
   const isLoading = isLoadingCategories || isLoadingIdeas;
