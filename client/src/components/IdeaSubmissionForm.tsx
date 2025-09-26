@@ -5,6 +5,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -154,6 +157,17 @@ export default function IdeaSubmissionForm() {
         description: "Please try again later.",
         variant: "destructive",
       });
+    },
+  });
+
+  // Mutation for adding new field option
+  const addFieldOptionMutation = useMutation({
+    mutationFn: async (data: { fieldId: string; value: string; label: string; order: string }) => {
+      return apiRequest('POST', '/api/form-field-options', data);
+    },
+    onSuccess: () => {
+      // Invalidate field options to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['/api/form-field-options'] });
     },
   });
 
