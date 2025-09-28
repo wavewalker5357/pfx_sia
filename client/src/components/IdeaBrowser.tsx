@@ -43,6 +43,30 @@ export default function IdeaBrowser({ searchTerm = '', componentFilter = '', tag
     },
   });
 
+  // Fetch form fields for mapping field IDs to labels
+  const { data: formFields = [] } = useQuery({
+    queryKey: ['/api/form-fields'],
+    queryFn: async () => {
+      const response = await fetch('/api/form-fields', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch form fields');
+      return response.json();
+    },
+  });
+
+  // Fetch field options for mapping values to labels
+  const { data: fieldOptions = [] } = useQuery({
+    queryKey: ['/api/form-field-options'],
+    queryFn: async () => {
+      const response = await fetch('/api/form-field-options', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch field options');
+      return response.json();
+    },
+  });
+
   const filteredIdeas = ideas.filter(idea => {
     const matchesSearch = !effectiveSearchTerm || 
       idea.title.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
@@ -63,6 +87,37 @@ export default function IdeaBrowser({ searchTerm = '', componentFilter = '', tag
       hour: '2-digit', 
       minute: '2-digit' 
     });
+  };
+
+  // Helper function to render dynamic fields
+  const renderDynamicFields = (dynamicFields: any[]) => {
+    if (!dynamicFields || dynamicFields.length === 0) return null;
+
+    return dynamicFields.map((field) => {
+      // Find the field configuration
+      const fieldConfig = formFields.find(f => f.id === field.fieldId);
+      if (!fieldConfig) return null;
+
+      // For list fields, try to find the option label
+      let displayValue = field.value;
+      if (fieldConfig.type === 'list') {
+        const option = fieldOptions.find(opt => opt.fieldId === field.fieldId && opt.value === field.value);
+        if (option) {
+          displayValue = option.label;
+        }
+      }
+
+      return (
+        <Badge 
+          key={field.id} 
+          variant="outline" 
+          className="text-xs"
+          data-testid={`badge-dynamic-${fieldConfig.name}`}
+        >
+          {fieldConfig.label}: {displayValue}
+        </Badge>
+      );
+    }).filter(Boolean);
   };
 
   if (isLoading) {
@@ -191,6 +246,8 @@ export default function IdeaBrowser({ searchTerm = '', componentFilter = '', tag
                 <Badge variant="secondary" data-testid={`badge-tag-${index}`}>
                   #{idea.tag}
                 </Badge>
+                {/* Render dynamic fields */}
+                {renderDynamicFields(idea.dynamicFields || [])}
               </div>
             </CardContent>
           </Card>
