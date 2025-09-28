@@ -117,15 +117,22 @@ export default function IdeaSubmissionForm() {
   // Create idea mutation with system Category field + dynamic field support
   const createIdeaMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      // Create main idea record with core fields (including system Type/Category)
-      const coreFields = ['submitter_name', 'idea_title', 'description', 'component', 'tag', 'type'];
+      // Only the type field is a true core field - all others are dynamic fields
+      const coreFields = ['type'];
+      
+      // Map dynamic form fields to database schema fields for backward compatibility
+      const getFieldValue = (fieldName: string) => {
+        const field = formFields.find(f => f.name === fieldName);
+        return field ? (data[fieldName] || '') : '';
+      };
+      
       const ideaData = {
-        name: data.submitter_name || '',
-        title: data.idea_title || '',
-        description: data.description || '',
-        component: data.component || '',
-        tag: data.tag || '',
-        type: data.type || '', // Use type field directly
+        name: getFieldValue('submitter_name'),
+        title: getFieldValue('idea_title'), 
+        description: getFieldValue('description'),
+        component: getFieldValue('component'),
+        tag: getFieldValue('tag'),
+        type: data.type || '', // System field
       };
       
       console.log('Submitting idea data:', ideaData);
@@ -135,8 +142,9 @@ export default function IdeaSubmissionForm() {
       const ideaResponse = await apiRequest('POST', '/api/ideas', ideaData);
       const idea = await ideaResponse.json();
       
-      // Store dynamic field values for any additional fields
-      const dynamicFields = Object.entries(data).filter(([key]) => !coreFields.includes(key));
+      // Store dynamic field values for any additional fields not mapped to database schema
+      const schemaFields = ['type', 'submitter_name', 'idea_title', 'description', 'component', 'tag'];
+      const dynamicFields = Object.entries(data).filter(([key]) => !schemaFields.includes(key));
       
       if (dynamicFields.length > 0) {
         console.log('Storing dynamic fields:', dynamicFields);
