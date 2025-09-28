@@ -81,6 +81,11 @@ export default function IdeaSubmissionForm() {
             ? z.string().email('Please enter a valid email address').min(1, `${field.label} is required`)
             : z.string().email('Please enter a valid email address').optional();
           break;
+        case 'textarea':
+          validation = field.required === 'true'
+            ? z.string().min(1, `${field.label} is required`).max(1000, `${field.label} must not exceed 1000 characters`)
+            : z.string().max(1000, `${field.label} must not exceed 1000 characters`).optional();
+          break;
         default:
           validation = field.required === 'true'
             ? z.string().min(1, `${field.label} is required`)
