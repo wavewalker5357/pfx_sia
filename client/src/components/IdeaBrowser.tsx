@@ -157,9 +157,23 @@ export default function IdeaBrowser({ searchTerm = '', componentFilter = '', tag
       const isExpanded = expandedFields.has(field.id);
       const content = field.value || '';
       const shouldTruncate = content.length > 300;
-      const displayContent = shouldTruncate && !isExpanded 
-        ? content.substring(0, 300).trim() + '...'
-        : content;
+      
+      // Truncate at word boundary, not mid-word
+      const getDisplayContent = () => {
+        if (!shouldTruncate || isExpanded) return content;
+        
+        const truncated = content.substring(0, 300);
+        const lastSpaceIndex = truncated.lastIndexOf(' ');
+        
+        // Always use word boundary if space exists, otherwise use character boundary
+        const wordBoundaryTruncated = lastSpaceIndex > -1 
+          ? truncated.substring(0, lastSpaceIndex) 
+          : truncated;
+        
+        return wordBoundaryTruncated.trim() + '...';
+      };
+      
+      const displayContent = getDisplayContent();
 
       return (
         <div key={field.id} className="text-sm" data-testid={`text-dynamic-${fieldConfig.name}`}>
