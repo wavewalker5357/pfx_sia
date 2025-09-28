@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Calendar, Tag, User } from 'lucide-react';
-import type { Idea, KanbanCategory } from '@shared/schema';
+import type { Idea, IdeaWithFields, KanbanCategory } from '@shared/schema';
 import { useState, useRef } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -16,7 +16,7 @@ interface IdeaBoardProps {
 
 export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFilter = '' }: IdeaBoardProps) {
   const queryClient = useQueryClient();
-  const [draggedIdea, setDraggedIdea] = useState<Idea | null>(null);
+  const [draggedIdea, setDraggedIdea] = useState<IdeaWithFields | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
   const pendingUpdatesRef = useRef<Map<string, { target: string; timeoutId: NodeJS.Timeout }>>(new Map()); // ideaId -> {target, timeoutId}
   // Fetch kanban categories
@@ -32,13 +32,37 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
   });
 
   // Fetch ideas
-  const { data: ideas = [], isLoading: isLoadingIdeas, error: ideasError } = useQuery<Idea[]>({
+  const { data: ideas = [], isLoading: isLoadingIdeas, error: ideasError } = useQuery<IdeaWithFields[]>({
     queryKey: ['/api/ideas'],
     queryFn: async () => {
       const response = await fetch('/api/ideas', {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch ideas');
+      return response.json();
+    },
+  });
+
+  // Fetch form fields for mapping field IDs to labels
+  const { data: formFields = [] } = useQuery({
+    queryKey: ['/api/form-fields'],
+    queryFn: async () => {
+      const response = await fetch('/api/form-fields', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch form fields');
+      return response.json();
+    },
+  });
+
+  // Fetch field options for mapping values to labels
+  const { data: fieldOptions = [] } = useQuery({
+    queryKey: ['/api/form-field-options'],
+    queryFn: async () => {
+      const response = await fetch('/api/form-field-options', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch field options');
       return response.json();
     },
   });
@@ -61,7 +85,7 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
   const ideaGroups = activeCategories.reduce((acc, category) => {
     acc[category.key] = filteredIdeas.filter(idea => idea.type === category.key);
     return acc;
-  }, {} as Record<string, Idea[]>);
+  }, {} as Record<string, IdeaWithFields[]>);
 
   // Mutation for updating idea category with proper cancellation handling
   const updateIdeaCategoryMutation = useMutation({
@@ -195,6 +219,37 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
     }, 300); // 300ms debounce delay
 
     pendingUpdates.set(ideaId, { target: categoryKey, timeoutId });
+  };
+
+  // Helper function to render dynamic fields
+  const renderDynamicFields = (dynamicFields: any[]) => {
+    if (!dynamicFields || dynamicFields.length === 0) return null;
+
+    return dynamicFields.map((field) => {
+      // Find the field configuration
+      const fieldConfig = formFields.find((f: any) => f.id === field.fieldId);
+      if (!fieldConfig) return null;
+
+      // For list fields, try to find the option label
+      let displayValue = field.value;
+      if (fieldConfig.type === 'list') {
+        const option = fieldOptions.find((opt: any) => opt.fieldId === field.fieldId && opt.value === field.value);
+        if (option) {
+          displayValue = option.label;
+        }
+      }
+
+      return (
+        <Badge 
+          key={field.id} 
+          variant="outline" 
+          className="text-xs"
+          data-testid={`badge-dynamic-${fieldConfig.name}`}
+        >
+          {fieldConfig.label}: {displayValue}
+        </Badge>
+      );
+    }).filter(Boolean);
   };
 
   const isLoading = isLoadingCategories || isLoadingIdeas;
@@ -336,6 +391,8 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
                             >
                               {idea.tag}
                             </Badge>
+                            {/* Render dynamic fields */}
+                            {renderDynamicFields(idea.dynamicFields || [])}
                           </div>
 
                           {/* Created Date */}
