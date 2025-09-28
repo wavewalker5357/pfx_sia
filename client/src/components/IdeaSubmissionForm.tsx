@@ -223,23 +223,42 @@ export default function IdeaSubmissionForm() {
             key={field.id}
             control={form.control}
             name={field.name}
-            render={({ field: formField }) => (
-              <FormItem>
-                <FormLabel>{field.label}</FormLabel>
-                <FormControl>
-                  <Textarea 
-                    placeholder={field.placeholder || ''}
-                    className="min-h-[120px]"
-                    data-testid={`input-${field.name}`}
-                    {...formField} 
-                  />
-                </FormControl>
-                {field.helpText && (
-                  <p className="text-sm text-muted-foreground">{field.helpText}</p>
-                )}
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field: formField }) => {
+              const currentValue = formField.value || '';
+              const charCount = currentValue.length;
+              const isOverLimit = charCount > 1000;
+              
+              return (
+                <FormItem>
+                  <FormLabel>{field.label}</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder={field.placeholder || ''}
+                      className={`min-h-[120px] ${isOverLimit ? 'border-destructive' : ''}`}
+                      data-testid={`input-${field.name}`}
+                      maxLength={1000}
+                      {...formField} 
+                    />
+                  </FormControl>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      {field.helpText && (
+                        <p className="text-sm text-muted-foreground">{field.helpText}</p>
+                      )}
+                    </div>
+                    <p className={`text-sm ${isOverLimit ? 'text-destructive' : 'text-muted-foreground'}`}>
+                      {charCount}/1000 characters
+                    </p>
+                  </div>
+                  <FormMessage />
+                  {isOverLimit && (
+                    <p className="text-sm text-destructive">
+                      Character limit exceeded. Please reduce the text to 1000 characters or less.
+                    </p>
+                  )}
+                </FormItem>
+              );
+            }}
           />
         );
 
