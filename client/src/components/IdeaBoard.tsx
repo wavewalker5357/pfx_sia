@@ -221,12 +221,31 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
     pendingUpdates.set(ideaId, { target: categoryKey, timeoutId });
   };
 
-  // Helper function to render dynamic fields
-  const renderDynamicFields = (dynamicFields: any[]) => {
+  // State for managing expanded textarea fields
+  const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
+
+  const toggleFieldExpansion = (fieldId: string) => {
+    const newExpanded = new Set(expandedFields);
+    if (newExpanded.has(fieldId)) {
+      newExpanded.delete(fieldId);
+    } else {
+      newExpanded.add(fieldId);
+    }
+    setExpandedFields(newExpanded);
+  };
+
+  // Helper function to render badge fields (text, list)
+  const renderBadgeFields = (dynamicFields: any[]) => {
     if (!dynamicFields || dynamicFields.length === 0) return null;
 
-    return dynamicFields.map((field) => {
-      // Find the field configuration
+    const badgeFields = dynamicFields.filter((field) => {
+      const fieldConfig = formFields.find((f: any) => f.id === field.fieldId);
+      return fieldConfig && (fieldConfig.type === 'text' || fieldConfig.type === 'list');
+    });
+
+    if (badgeFields.length === 0) return null;
+
+    return badgeFields.map((field) => {
       const fieldConfig = formFields.find((f: any) => f.id === field.fieldId);
       if (!fieldConfig) return null;
 
@@ -248,6 +267,47 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
         >
           {fieldConfig.label}: {displayValue}
         </Badge>
+      );
+    }).filter(Boolean);
+  };
+
+  // Helper function to render expandable textarea fields
+  const renderTextareaFields = (dynamicFields: any[]) => {
+    if (!dynamicFields || dynamicFields.length === 0) return null;
+
+    const textareaFields = dynamicFields.filter((field) => {
+      const fieldConfig = formFields.find((f: any) => f.id === field.fieldId);
+      return fieldConfig && fieldConfig.type === 'textarea';
+    });
+
+    if (textareaFields.length === 0) return null;
+
+    return textareaFields.map((field) => {
+      const fieldConfig = formFields.find((f: any) => f.id === field.fieldId);
+      if (!fieldConfig) return null;
+
+      const isExpanded = expandedFields.has(field.id);
+      const content = field.value || '';
+      const shouldTruncate = content.length > 300;
+      const displayContent = shouldTruncate && !isExpanded 
+        ? content.substring(0, 300).trim() + '...'
+        : content;
+
+      return (
+        <div key={field.id} className="text-xs mt-1" data-testid={`text-dynamic-${fieldConfig.name}`}>
+          <span className="font-medium">{fieldConfig.label}:</span> {displayContent}
+          {shouldTruncate && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-auto p-0 ml-1 text-xs text-primary hover:text-primary-foreground"
+              onClick={() => toggleFieldExpansion(field.id)}
+              data-testid={`button-toggle-${fieldConfig.name}`}
+            >
+              {isExpanded ? '[Show less]' : '[Show more]'}
+            </Button>
+          )}
+        </div>
       );
     }).filter(Boolean);
   };
@@ -391,8 +451,13 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
                             >
                               {idea.tag}
                             </Badge>
-                            {/* Render dynamic fields */}
-                            {renderDynamicFields(idea.dynamicFields || [])}
+                            {/* Render badge fields (text, list) */}
+                            {renderBadgeFields(idea.dynamicFields || [])}
+                          </div>
+                          
+                          {/* Render textarea fields with minimal spacing */}
+                          <div className="space-y-1">
+                            {renderTextareaFields(idea.dynamicFields || [])}
                           </div>
 
                           {/* Created Date */}
