@@ -106,7 +106,8 @@ export default function AdminDashboard() {
     required: false,
     placeholder: '',
     helpText: '',
-    allowUserAdditions: false
+    allowUserAdditions: false,
+    order: ''
   });
 
   // Fetch summit resources
@@ -1279,6 +1280,19 @@ export default function AdminDashboard() {
                     />
                   </div>
 
+                  <div>
+                    <Label htmlFor="field-order">Order</Label>
+                    <Input
+                      id="field-order"
+                      type="number"
+                      placeholder="0"
+                      value={newFieldForm.order}
+                      onChange={(e) => setNewFieldForm(prev => ({ ...prev, order: e.target.value }))}
+                      data-testid="input-field-order"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Lower numbers appear first (0, 1, 2...)</p>
+                  </div>
+
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
@@ -1314,7 +1328,7 @@ export default function AdminDashboard() {
                         placeholder: newFieldForm.placeholder || null,
                         helpText: newFieldForm.helpText || null,
                         allowUserAdditions: newFieldForm.allowUserAdditions ? 'true' : 'false',
-                        order: formFields.length.toString(),
+                        order: newFieldForm.order || formFields.length.toString(),
                         isActive: 'true'
                       });
                     }}
@@ -1334,7 +1348,8 @@ export default function AdminDashboard() {
                         required: false,
                         placeholder: '',
                         helpText: '',
-                        allowUserAdditions: false
+                        allowUserAdditions: false,
+                        order: ''
                       });
                     }}
                     data-testid="button-cancel-field"
@@ -1411,6 +1426,19 @@ export default function AdminDashboard() {
                       onChange={(e) => setEditingField(prev => prev ? { ...prev, helpText: e.target.value } : null)}
                       data-testid="input-edit-field-help"
                     />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="edit-field-order">Order</Label>
+                    <Input
+                      id="edit-field-order"
+                      type="number"
+                      placeholder="0"
+                      value={editingField.order}
+                      onChange={(e) => setEditingField(prev => prev ? { ...prev, order: e.target.value } : null)}
+                      data-testid="input-edit-field-order"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Lower numbers appear first (0, 1, 2...)</p>
                   </div>
 
                   <div className="flex items-center space-x-2">
