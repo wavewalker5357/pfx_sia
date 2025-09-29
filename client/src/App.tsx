@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -22,12 +22,14 @@ import SummitHomePage from "@/components/SummitHomePage";
 import { Footer } from "@/components/Footer";
 
 function AttendeeApp() {
+  const [activeTab, setActiveTab] = useState('submit');
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader isAdmin={false} />
 
       <main className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="submit" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="home" data-testid="tab-home" className="px-3">
               <Home className="w-4 h-4 sm:mr-2" />
@@ -56,7 +58,7 @@ function AttendeeApp() {
           </TabsContent>
 
           <TabsContent value="browse" className="space-y-6">
-            <IdeaViewer />
+            <IdeaViewer onNavigateToSubmit={() => setActiveTab('submit')} />
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">

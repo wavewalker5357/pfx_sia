@@ -11,7 +11,11 @@ import type { ViewSettings, Idea } from '@shared/schema';
 
 type ViewMode = 'list' | 'board';
 
-export default function IdeaViewer() {
+interface IdeaViewerProps {
+  onNavigateToSubmit?: () => void;
+}
+
+export default function IdeaViewer({ onNavigateToSubmit }: IdeaViewerProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [componentFilter, setComponentFilter] = useState('');
   const [tagFilter, setTagFilter] = useState('');
@@ -142,6 +146,7 @@ export default function IdeaViewer() {
           searchTerm={searchTerm}
           componentFilter={componentFilter}
           tagFilter={tagFilter}
+          onNavigateToSubmit={onNavigateToSubmit}
         />
       )}
     </div>
