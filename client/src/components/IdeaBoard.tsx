@@ -12,9 +12,10 @@ interface IdeaBoardProps {
   searchTerm?: string;
   componentFilter?: string;
   tagFilter?: string;
+  onNavigateToSubmit?: () => void;
 }
 
-export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFilter = '' }: IdeaBoardProps) {
+export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFilter = '', onNavigateToSubmit }: IdeaBoardProps) {
   const queryClient = useQueryClient();
   const [draggedIdea, setDraggedIdea] = useState<IdeaWithFields | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
@@ -374,6 +375,13 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
     );
   }
 
+  // Navigation function to switch to Submit Ideas tab
+  const handleAddIdea = () => {
+    if (onNavigateToSubmit) {
+      onNavigateToSubmit();
+    }
+  };
+
   return (
     <div className="space-y-4" data-testid="idea-board">
       {/* Board Header */}
@@ -384,7 +392,7 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
             Kanban-style view with {filteredIdeas.length} ideas across {activeCategories.length} categories
           </p>
         </div>
-        <Button size="sm" data-testid="button-add-idea">
+        <Button size="sm" onClick={handleAddIdea} data-testid="button-add-idea">
           <Plus className="w-4 h-4 mr-2" />
           Add Idea
         </Button>
