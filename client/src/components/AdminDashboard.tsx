@@ -1478,6 +1478,7 @@ export default function AdminDashboard() {
                           placeholder: editingField.placeholder || null,
                           helpText: editingField.helpText || null,
                           allowUserAdditions: editingField.allowUserAdditions,
+                          order: editingField.order,
                         }
                       });
                     }}
