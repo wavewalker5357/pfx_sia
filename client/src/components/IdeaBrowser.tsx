@@ -19,17 +19,24 @@ interface IdeaBrowserProps {
   searchTerm?: string;
   componentFilter?: string;
   tagFilter?: string;
+  showFilterControls?: boolean; // New prop to control whether to show built-in filters
 }
 
-export default function IdeaBrowser({ searchTerm = '', componentFilter = '', tagFilter = '' }: IdeaBrowserProps) {
+export default function IdeaBrowser({ 
+  searchTerm = '', 
+  componentFilter = '', 
+  tagFilter = '', 
+  showFilterControls = false 
+}: IdeaBrowserProps) {
+  // Local state for when component is used independently
   const [localSearchTerm, setLocalSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
-  const [localFilterComponent, setLocalFilterComponent] = useState('all');
+  const [localComponentFilter, setLocalComponentFilter] = useState('');
+  const [localTagFilter, setLocalTagFilter] = useState('');
 
-  // Use props if provided, otherwise use local state for backward compatibility
-  const effectiveSearchTerm = searchTerm || localSearchTerm;
-  const effectiveComponentFilter = componentFilter !== undefined ? componentFilter : (localFilterComponent === 'all' ? '' : localFilterComponent);
-  const effectiveTagFilter = tagFilter;
+  // Use local state when in independent mode, otherwise use props (parent-controlled)
+  const effectiveSearchTerm = showFilterControls ? localSearchTerm : searchTerm;
+  const effectiveComponentFilter = showFilterControls ? localComponentFilter : componentFilter;
+  const effectiveTagFilter = showFilterControls ? localTagFilter : tagFilter;
 
   // Fetch ideas with dynamic fields from API
   const { data: ideas = [], isLoading, error } = useQuery<IdeaWithFields[]>({
@@ -67,16 +74,21 @@ export default function IdeaBrowser({ searchTerm = '', componentFilter = '', tag
     },
   });
 
+  // Get unique filter options for independent mode
+  const uniqueComponents = Array.from(new Set(ideas.map(idea => idea.component).filter(Boolean)));
+  const uniqueTags = Array.from(new Set(ideas.map(idea => idea.tag).filter(Boolean)));
+
+  // Filter ideas based on search and filter criteria (matching IdeaBoard.tsx exactly)
   const filteredIdeas = ideas.filter(idea => {
     const matchesSearch = !effectiveSearchTerm || 
       idea.title.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
       idea.description.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
       idea.name.toLowerCase().includes(effectiveSearchTerm.toLowerCase());
-    const matchesType = filterType === 'all' || idea.type === filterType;
+    
     const matchesComponent = !effectiveComponentFilter || idea.component === effectiveComponentFilter;
     const matchesTag = !effectiveTagFilter || idea.tag === effectiveTagFilter;
     
-    return matchesSearch && matchesType && matchesComponent && matchesTag;
+    return matchesSearch && matchesComponent && matchesTag;
   });
 
   const formatTime = (dateInput: string | Date) => {
@@ -232,75 +244,76 @@ export default function IdeaBrowser({ searchTerm = '', componentFilter = '', tag
 
   return (
     <div className="space-y-6">
-      {/* Search and Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Browse Ideas</CardTitle>
-          <CardDescription>
-            Explore all submitted AI ideas, stories, and solutions
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Search ideas..."
-                value={effectiveSearchTerm}
-                onChange={(e) => setLocalSearchTerm(e.target.value)}
-                className="pl-10"
-                data-testid="input-search"
-              />
+      {/* Conditional Filter Controls for Independent Mode */}
+      {showFilterControls && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              {/* Search Input */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Search ideas, descriptions, or authors..."
+                  value={localSearchTerm}
+                  onChange={(e) => setLocalSearchTerm(e.target.value)}
+                  className="pl-10"
+                  data-testid="input-search-ideas-local"
+                />
+              </div>
+
+              {/* Component Filter */}
+              <Select value={localComponentFilter || "all"} onValueChange={(value) => setLocalComponentFilter(value === "all" ? "" : value)}>
+                <SelectTrigger className="w-full md:w-48" data-testid="select-component-filter-local">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="All Components" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Components</SelectItem>
+                  {uniqueComponents.map((component) => (
+                    <SelectItem key={component} value={component}>
+                      {component}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Tag Filter */}
+              <Select value={localTagFilter || "all"} onValueChange={(value) => setLocalTagFilter(value === "all" ? "" : value)}>
+                <SelectTrigger className="w-full md:w-48" data-testid="select-tag-filter-local">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="All Tags" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Tags</SelectItem>
+                  {uniqueTags.map((tag) => (
+                    <SelectItem key={tag} value={tag}>
+                      {tag}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-filter-type">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="AI Story">AI Story</SelectItem>
-                <SelectItem value="AI Idea">AI Idea</SelectItem>
-                <SelectItem value="AI Solution">AI Solution</SelectItem>
-              </SelectContent>
-            </Select>
 
-            <Select value={effectiveComponentFilter} onValueChange={setLocalFilterComponent}>
-              <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-filter-component">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Components</SelectItem>
-                <SelectItem value="Frontend">Frontend</SelectItem>
-                <SelectItem value="Backend">Backend</SelectItem>
-                <SelectItem value="AI/ML">AI/ML</SelectItem>
-                <SelectItem value="Product">Product</SelectItem>
-                <SelectItem value="Data">Data</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Showing {filteredIdeas.length} of {ideas.length} ideas
-            </p>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => {
-                setLocalSearchTerm('');
-                setFilterType('all');
-                setLocalFilterComponent('all');
-              }}
-              data-testid="button-clear-filters"
-            >
-              Clear Filters
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-muted-foreground">
+                Showing {filteredIdeas.length} of {ideas.length} ideas
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  setLocalSearchTerm('');
+                  setLocalComponentFilter('');
+                  setLocalTagFilter('');
+                }}
+                data-testid="button-clear-filters-local"
+              >
+                Clear Filters
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Ideas Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
