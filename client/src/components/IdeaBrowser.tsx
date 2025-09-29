@@ -106,15 +106,23 @@ export default function IdeaBrowser({ searchTerm = '', componentFilter = '', tag
   const renderBadgeFields = (dynamicFields: any[]) => {
     if (!dynamicFields || dynamicFields.length === 0) return null;
 
+    // Sort formFields by order before filtering, same as submission form
+    const sortedFormFields = [...formFields].sort((a, b) => Number(a.order) - Number(b.order));
+    
     const badgeFields = dynamicFields.filter((field) => {
-      const fieldConfig = formFields.find((f: any) => f.id === field.fieldId);
+      const fieldConfig = sortedFormFields.find((f: any) => f.id === field.fieldId);
       return fieldConfig && (fieldConfig.type === 'text' || fieldConfig.type === 'list');
+    }).sort((a, b) => {
+      // Sort badge fields by their field config order
+      const fieldConfigA = sortedFormFields.find((f: any) => f.id === a.fieldId);
+      const fieldConfigB = sortedFormFields.find((f: any) => f.id === b.fieldId);
+      return Number(fieldConfigA?.order || 0) - Number(fieldConfigB?.order || 0);
     });
 
     if (badgeFields.length === 0) return null;
 
     return badgeFields.map((field) => {
-      const fieldConfig = formFields.find((f: any) => f.id === field.fieldId);
+      const fieldConfig = sortedFormFields.find((f: any) => f.id === field.fieldId);
       if (!fieldConfig) return null;
 
       // For list fields, try to find the option label
@@ -143,15 +151,23 @@ export default function IdeaBrowser({ searchTerm = '', componentFilter = '', tag
   const renderTextareaFields = (dynamicFields: any[]) => {
     if (!dynamicFields || dynamicFields.length === 0) return null;
 
+    // Sort formFields by order before filtering, same as submission form
+    const sortedFormFields = [...formFields].sort((a, b) => Number(a.order) - Number(b.order));
+    
     const textareaFields = dynamicFields.filter((field) => {
-      const fieldConfig = formFields.find((f: any) => f.id === field.fieldId);
+      const fieldConfig = sortedFormFields.find((f: any) => f.id === field.fieldId);
       return fieldConfig && fieldConfig.type === 'textarea';
+    }).sort((a, b) => {
+      // Sort textarea fields by their field config order
+      const fieldConfigA = sortedFormFields.find((f: any) => f.id === a.fieldId);
+      const fieldConfigB = sortedFormFields.find((f: any) => f.id === b.fieldId);
+      return Number(fieldConfigA?.order || 0) - Number(fieldConfigB?.order || 0);
     });
 
     if (textareaFields.length === 0) return null;
 
     return textareaFields.map((field) => {
-      const fieldConfig = formFields.find((f: any) => f.id === field.fieldId);
+      const fieldConfig = sortedFormFields.find((f: any) => f.id === field.fieldId);
       if (!fieldConfig) return null;
 
       const isExpanded = expandedFields.has(field.id);
