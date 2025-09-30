@@ -172,6 +172,8 @@ export default function IdeaSubmissionForm() {
     onSuccess: () => {
       // Invalidate ideas cache to refresh the Browse Ideas view
       queryClient.invalidateQueries({ queryKey: ['/api/ideas'] });
+      // Invalidate statistics cache to refresh Analytics dashboard
+      queryClient.invalidateQueries({ queryKey: ['/api/statistics'] });
       toast({
         title: "Idea submitted successfully!",
         description: "Thank you for contributing to the AI Summit.",
