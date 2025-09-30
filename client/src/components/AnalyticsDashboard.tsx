@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { TrendingUp, Users, Lightbulb, Tag, Award, Calendar } from 'lucide-react';
+import { TrendingUp, Users, Lightbulb, Tag, Award, Calendar, ThumbsUp, Vote } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -18,6 +18,13 @@ interface StatisticsData {
   lastResetAt: string;
 }
 
+// Vote Analytics API response type
+interface VoteAnalyticsData {
+  totalVotesCast: number;
+  totalParticipants: number;
+  topVotedIdeas: Array<{ ideaId: string; title: string; voteCount: number }>;
+}
+
 // Color palette for charts
 const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
@@ -27,6 +34,13 @@ export default function AnalyticsDashboard() {
     queryKey: ['/api/statistics'],
     enabled: true,
     refetchOnMount: 'always', // Always refetch when tab is opened to ensure fresh data
+  });
+
+  // Fetch vote analytics data
+  const { data: voteAnalytics, isLoading: isLoadingVotes } = useQuery<VoteAnalyticsData>({
+    queryKey: ['/api/vote-analytics'],
+    enabled: true,
+    refetchOnMount: 'always',
   });
 
   // Derive chart data from statistics
@@ -124,6 +138,47 @@ export default function AnalyticsDashboard() {
             )}
             <p className="text-xs text-muted-foreground">
               {isLoading ? <Skeleton className="h-3 w-20" /> : `${peakHour.submissions} submissions`}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Voting Analytics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Votes Cast</CardTitle>
+            <ThumbsUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoadingVotes ? (
+              <Skeleton className="h-8 w-16 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold" data-testid="text-total-votes">{voteAnalytics?.totalVotesCast ?? 0}</div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Total votes from all participants
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Voting Participants</CardTitle>
+            <Vote className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoadingVotes ? (
+              <Skeleton className="h-8 w-16 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold" data-testid="text-voting-participants">{voteAnalytics?.totalParticipants ?? 0}</div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {isLoadingVotes ? <Skeleton className="h-3 w-32" /> : 
+                voteAnalytics?.totalParticipants ? 
+                  `Average ${((voteAnalytics.totalVotesCast / voteAnalytics.totalParticipants) || 0).toFixed(1)} votes per person` : 
+                  'No participants yet'
+              }
             </p>
           </CardContent>
         </Card>
@@ -299,6 +354,35 @@ export default function AnalyticsDashboard() {
           ) : (
             <div className="text-center text-muted-foreground py-4">
               No trending tags yet
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Top Voted Ideas */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ThumbsUp className="w-4 h-4" />
+            Top Voted Ideas
+          </CardTitle>
+          <CardDescription>Ideas with the most votes</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingVotes ? (
+            <Skeleton className="h-[300px] w-full" />
+          ) : (voteAnalytics?.topVotedIdeas ?? []).length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={voteAnalytics?.topVotedIdeas ?? []} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="title" type="category" width={150} />
+                <Bar dataKey="voteCount" fill="hsl(var(--primary))" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              No votes cast yet
             </div>
           )}
         </CardContent>
