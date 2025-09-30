@@ -43,7 +43,7 @@ export default function AnalyticsDashboard() {
     : { name: 'N/A', value: 0 };
   
   const hourlyData = (statistics?.hourlySubmissions ?? []).map(item => ({
-    time: new Date(`2000-01-01T${item.hour}`).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true }),
+    time: new Date(item.hour.replace(' ', 'T')).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true }),
     submissions: item.submissions
   }));
   
