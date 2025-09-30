@@ -172,12 +172,14 @@ export default function IdeaViewer({ onNavigateToSubmit }: IdeaViewerProps) {
           searchTerm={searchTerm}
           componentFilter={componentFilter} 
           tagFilter={tagFilter}
+          sortBy={sortBy}
         />
       ) : (
         <IdeaBoard 
           searchTerm={searchTerm}
           componentFilter={componentFilter}
           tagFilter={tagFilter}
+          sortBy={sortBy}
           onNavigateToSubmit={onNavigateToSubmit}
         />
       )}
