@@ -36,10 +36,13 @@ export function useVoting() {
       });
     },
     onSuccess: async () => {
-      // Force immediate refetch instead of just invalidating
+      // Invalidate to mark stale, then refetch for immediate updates
+      queryClient.invalidateQueries({ queryKey: ['/api/votes', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ideas'] });
+      
       await Promise.all([
-        queryClient.refetchQueries({ queryKey: ['/api/votes', sessionId] }),
-        queryClient.refetchQueries({ queryKey: ['/api/ideas'] })
+        queryClient.refetchQueries({ queryKey: ['/api/votes', sessionId], type: 'active' }),
+        queryClient.refetchQueries({ queryKey: ['/api/ideas'], type: 'active' })
       ]);
     },
     onError: (error: any) => {
@@ -58,10 +61,13 @@ export function useVoting() {
       return apiRequest('DELETE', `/api/votes/${ideaId}?sessionId=${sessionId}`);
     },
     onSuccess: async () => {
-      // Force immediate refetch instead of just invalidating
+      // Invalidate to mark stale, then refetch for immediate updates
+      queryClient.invalidateQueries({ queryKey: ['/api/votes', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ideas'] });
+      
       await Promise.all([
-        queryClient.refetchQueries({ queryKey: ['/api/votes', sessionId] }),
-        queryClient.refetchQueries({ queryKey: ['/api/ideas'] })
+        queryClient.refetchQueries({ queryKey: ['/api/votes', sessionId], type: 'active' }),
+        queryClient.refetchQueries({ queryKey: ['/api/ideas'], type: 'active' })
       ]);
     },
     onError: (error: any) => {
