@@ -752,12 +752,13 @@ export default function AdminDashboard() {
               </Label>
               <Button 
                 variant="destructive" 
-                onClick={handleBulkDelete}
+                onClick={() => setShowDeleteAllDialog(true)}
                 className="w-full"
-                data-testid="button-bulk-delete"
+                data-testid="button-delete-all-ideas"
+                disabled={deleteAllIdeasMutation.isPending}
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Delete Selected
+                {deleteAllIdeasMutation.isPending ? 'Deleting...' : 'Delete All Ideas'}
               </Button>
             </div>
           </CardContent>
@@ -2216,6 +2217,30 @@ function KanbanCategoriesAdmin() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete All Ideas Confirmation Dialog */}
+      <AlertDialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+        <AlertDialogContent data-testid="dialog-delete-all-ideas">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete All Ideas?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete all submitted ideas 
+              from all users and remove all associated data from the database. 
+              The platform will be reset to a clean state.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-all">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteAllIdeasMutation.mutate()}
+              className="bg-destructive hover:bg-destructive/90"
+              data-testid="button-confirm-delete-all"
+            >
+              Delete All Ideas
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
