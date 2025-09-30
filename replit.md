@@ -46,6 +46,13 @@ Preferred communication style: Simple, everyday language.
   - Ideas table for submissions with metadata
   - Users table for admin authentication
   - Summit resources table for manageable external links
+  - Form fields table for custom field configurations with multi-select support
+  - Idea dynamic fields table for storing user-submitted values (one row per value for multi-select)
+- **Multi-Select Implementation**: 
+  - Custom dropdown fields can be configured as multi-select in admin panel
+  - Each selected value stored as separate row in ideaDynamicFields for accurate statistics
+  - UI displays multiple values as individual badges
+  - Supports both single and multi-select modes for list-type fields
 - **Development Storage**: In-memory storage interface for testing and development
 
 ### UI/UX Design System
@@ -61,6 +68,12 @@ Preferred communication style: Simple, everyday language.
 - **Analytics Dashboard**: Real-time charts and statistics using Recharts
 - **Admin Panel**: Content management, user activity monitoring, and data export
 - **Summit Resources**: Admin-managed external links dropdown
+- **Custom Form Fields**: 
+  - Admin-configurable dynamic fields with multiple types (text, textarea, dropdown)
+  - Multi-select dropdown support for custom list fields
+  - Field ordering control with drag-and-drop
+  - User-addable options for dropdown fields
+  - Complete database reset functionality for fresh starts
 
 ## External Dependencies
 
