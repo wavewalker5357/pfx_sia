@@ -606,7 +606,14 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
                           {/* Created Date */}
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Calendar className="w-3 h-3" />
-                            {new Date(idea.createdAt).toLocaleDateString()}
+                            {new Date(idea.createdAt).toLocaleString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: 'numeric', 
+                              minute: '2-digit',
+                              hour12: true
+                            })}
                           </div>
                         </div>
                       </CardContent>
