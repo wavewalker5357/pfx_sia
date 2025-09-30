@@ -142,7 +142,17 @@ export default function IdeaSubmissionForm() {
       // Map dynamic form fields to database schema fields for backward compatibility
       const getFieldValue = (fieldName: string) => {
         const field = formFields.find(f => f.name === fieldName);
-        return field ? (data[fieldName] || '') : '';
+        if (!field) return '';
+        
+        const value = data[fieldName];
+        
+        // Core schema fields must be strings - if value is an array (multi-select), convert to string
+        if (Array.isArray(value)) {
+          // Join array values with comma-space separator
+          return value.filter(v => v).join(', ');
+        }
+        
+        return value || '';
       };
       
       const ideaData = {
