@@ -360,14 +360,14 @@ export default function IdeaBrowser({
           const canVoteDown = canVote(idea.id, false);
 
           return (
-            <Card key={idea.id} className="hover-elevate" data-testid={`card-idea-${index}`}>
+            <Card key={idea.id} className="hover-elevate" data-testid={`card-idea-${idea.id}`}>
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <CardTitle className="text-lg mb-2">{idea.title}</CardTitle>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
                       <User className="w-4 h-4" />
-                      <span data-testid={`text-author-${index}`}>{idea.name}</span>
+                      <span data-testid={`text-author-${idea.id}`}>{idea.name}</span>
                       <Calendar className="w-4 h-4 ml-2" />
                       <span>{formatTime(idea.createdAt)}</span>
                     </div>
@@ -375,7 +375,7 @@ export default function IdeaBrowser({
                   <div className="flex items-center gap-2">
                     <Badge 
                       className={typeColors[idea.type as keyof typeof typeColors]}
-                      data-testid={`badge-type-${index}`}
+                      data-testid={`badge-type-${idea.id}`}
                     >
                       {idea.type}
                     </Badge>
@@ -389,12 +389,12 @@ export default function IdeaBrowser({
                       variant="outline"
                       onClick={() => vote(idea.id, false)}
                       disabled={!canVoteDown || isVoting}
-                      data-testid={`button-vote-down-${index}`}
+                      data-testid={`button-vote-down-${idea.id}`}
                       className="h-8 w-8"
                     >
                       <Minus className="h-4 w-4" />
                     </Button>
-                    <Badge variant="secondary" className="px-3" data-testid={`badge-my-votes-${index}`}>
+                    <Badge variant="secondary" className="px-3" data-testid={`badge-my-votes-${idea.id}`}>
                       <ThumbsUp className="h-3 w-3 mr-1" />
                       {myVotes}
                     </Badge>
@@ -403,19 +403,19 @@ export default function IdeaBrowser({
                       variant="outline"
                       onClick={() => vote(idea.id, true)}
                       disabled={!canVoteUp || isVoting}
-                      data-testid={`button-vote-up-${index}`}
+                      data-testid={`button-vote-up-${idea.id}`}
                       className="h-8 w-8"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
                     <span className="text-sm text-muted-foreground ml-2">
-                      Total: <span className="font-semibold" data-testid={`text-total-votes-${index}`}>{idea.totalVotes || 0}</span>
+                      Total: <span className="font-semibold" data-testid={`text-total-votes-${idea.id}`}>{idea.totalVotes || 0}</span>
                     </span>
                   </div>
                 )}
                 {!isVotingOpen && idea.totalVotes !== undefined && idea.totalVotes > 0 && (
                   <div className="flex items-center gap-2 mt-3">
-                    <Badge variant="outline" data-testid={`badge-votes-closed-${index}`}>
+                    <Badge variant="outline" data-testid={`badge-votes-closed-${idea.id}`}>
                       <ThumbsUp className="h-3 w-3 mr-1" />
                       {idea.totalVotes} vote{idea.totalVotes !== 1 ? 's' : ''}
                     </Badge>
@@ -427,10 +427,10 @@ export default function IdeaBrowser({
                 {idea.description}
               </CardDescription>
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline" data-testid={`badge-component-${index}`}>
+                <Badge variant="outline" data-testid={`badge-component-${idea.id}`}>
                   {idea.component}
                 </Badge>
-                <Badge variant="secondary" data-testid={`badge-tag-${index}`}>
+                <Badge variant="secondary" data-testid={`badge-tag-${idea.id}`}>
                   #{idea.tag}
                 </Badge>
                 {/* Render badge fields (text, list) */}
