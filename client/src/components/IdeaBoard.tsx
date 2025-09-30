@@ -19,17 +19,16 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
   const queryClient = useQueryClient();
   const [draggedIdea, setDraggedIdea] = useState<IdeaWithFields | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => 
+    document.documentElement.classList.contains('dark')
+  );
   const pendingUpdatesRef = useRef<Map<string, { target: string; timeoutId: NodeJS.Timeout }>>(new Map()); // ideaId -> {target, timeoutId}
   
-  // Detect dark mode
+  // Detect dark mode changes
   useEffect(() => {
     const checkDarkMode = () => {
       setIsDarkMode(document.documentElement.classList.contains('dark'));
     };
-    
-    // Check on mount
-    checkDarkMode();
     
     // Watch for theme changes
     const observer = new MutationObserver(checkDarkMode);
