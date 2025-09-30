@@ -5,6 +5,16 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, Tooltip } from 'recharts';
 import { 
   Download, 
@@ -95,6 +105,7 @@ export default function AdminDashboard() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [editingField, setEditingField] = useState<FormField | null>(null);
   const [showNewFieldDialog, setShowNewFieldDialog] = useState(false);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
@@ -201,6 +212,28 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: "Failed to delete summit resource.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete all ideas mutation
+  const deleteAllIdeasMutation = useMutation({
+    mutationFn: () => apiRequest('DELETE', '/api/ideas'),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/ideas'] });
+      setShowDeleteAllDialog(false);
+      toast({
+        title: "All Ideas Deleted",
+        description: `Successfully deleted ${data.deletedCount} idea${data.deletedCount !== 1 ? 's' : ''} from the database.`,
+        variant: "destructive",
+      });
+    },
+    onError: () => {
+      setShowDeleteAllDialog(false);
+      toast({
+        title: "Error",
+        description: "Failed to delete all ideas. Please try again.",
         variant: "destructive",
       });
     },
