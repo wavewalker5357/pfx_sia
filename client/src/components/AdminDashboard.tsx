@@ -37,7 +37,8 @@ import {
   Palette,
   Kanban,
   GripVertical,
-  Globe
+  Globe,
+  RotateCcw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -79,6 +80,7 @@ export default function AdminDashboard() {
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [showResetStatsDialog, setShowResetStatsDialog] = useState(false);
   const [editingField, setEditingField] = useState<FormField | null>(null);
   const [showNewFieldDialog, setShowNewFieldDialog] = useState(false);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
@@ -216,6 +218,26 @@ export default function AdminDashboard() {
         variant: "destructive",
       });
     },
+  });
+
+  // Reset statistics mutation
+  const resetStatsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/statistics/reset', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to reset statistics');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Statistics reset successfully", description: "All metrics have been cleared." });
+      queryClient.invalidateQueries({ queryKey: ['/api/statistics'] });
+      setShowResetStatsDialog(false);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to reset statistics", variant: "destructive" });
+    }
   });
 
   // Form field mutations
@@ -792,6 +814,26 @@ export default function AdminDashboard() {
               >
                 <Trash2 className="w-4 h-4 mr-2" />
                 {deleteAllIdeasMutation.isPending ? 'Deleting...' : 'Delete All Ideas'}
+              </Button>
+            </div>
+
+            <Separator />
+
+            {/* Statistics Management */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <RotateCcw className="w-4 h-4" />
+                Statistics Management
+              </Label>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowResetStatsDialog(true)}
+                className="w-full"
+                data-testid="button-reset-statistics"
+                disabled={resetStatsMutation.isPending}
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                {resetStatsMutation.isPending ? 'Resetting...' : 'Reset Statistics'}
               </Button>
             </div>
           </CardContent>
@@ -1811,6 +1853,28 @@ export default function AdminDashboard() {
               data-testid="button-confirm-delete-all"
             >
               Delete All Ideas
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset Statistics Confirmation Dialog */}
+      <AlertDialog open={showResetStatsDialog} onOpenChange={setShowResetStatsDialog}>
+        <AlertDialogContent data-testid="dialog-reset-statistics">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset All Statistics?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will reset all statistics to zero. Your ideas will remain unchanged, 
+              but all metrics will restart counting from now. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-reset-stats">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => resetStatsMutation.mutate()}
+              data-testid="button-confirm-reset-stats"
+            >
+              Reset Statistics
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
