@@ -26,6 +26,7 @@ export default function AnalyticsDashboard() {
   const { data: statistics, isLoading } = useQuery<StatisticsData>({
     queryKey: ['/api/statistics'],
     enabled: true,
+    refetchOnMount: 'always', // Always refetch when tab is opened to ensure fresh data
   });
 
   // Derive chart data from statistics
