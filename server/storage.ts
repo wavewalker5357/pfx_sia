@@ -23,6 +23,10 @@ import {
   type InsertSummitHomeContent,
   type StatisticsState,
   type InsertStatisticsState,
+  type Vote,
+  type InsertVote,
+  type VotingSettings,
+  type InsertVotingSettings,
   users,
   ideas,
   summitResources,
@@ -34,7 +38,9 @@ import {
   viewSettings,
   landingPageSettings,
   summitHomeContent,
-  statisticsState
+  statisticsState,
+  votes,
+  votingSettings
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, gte, sql, and, desc } from "drizzle-orm";
@@ -125,6 +131,25 @@ export interface IStorage {
 
   // Additional methods needed by routes
   getIdeasWithFields(): Promise<(Idea & { dynamicFields?: IdeaDynamicField[] })[]>;
+
+  // Voting Settings CRUD
+  getVotingSettings(): Promise<VotingSettings | undefined>;
+  updateVotingSettings(id: string, updates: Partial<InsertVotingSettings>): Promise<VotingSettings | undefined>;
+  
+  // Votes CRUD
+  getVotes(sessionId?: string): Promise<Vote[]>;
+  getVotesByIdea(ideaId: string): Promise<Vote[]>;
+  getVote(ideaId: string, sessionId: string): Promise<Vote | undefined>;
+  upsertVote(vote: InsertVote): Promise<Vote>;
+  deleteVote(ideaId: string, sessionId: string): Promise<boolean>;
+  deleteAllVotes(): Promise<number>;
+  
+  // Vote analytics
+  getVoteAnalytics(): Promise<{
+    totalVotesCast: number;
+    totalParticipants: number;
+    topVotedIdeas: Array<{ ideaId: string; title: string; voteCount: number }>;
+  }>;
 }
 
 // Database Storage Implementation
@@ -627,6 +652,138 @@ export class DatabaseStorage implements IStorage {
       ...idea,
       dynamicFields: allDynamicFields.filter(field => field.ideaId === idea.id)
     }));
+  }
+
+  // Voting Settings CRUD
+  async getVotingSettings(): Promise<VotingSettings | undefined> {
+    const [settings] = await db.select().from(votingSettings).limit(1);
+    return settings || undefined;
+  }
+
+  async updateVotingSettings(id: string, updates: Partial<InsertVotingSettings>): Promise<VotingSettings | undefined> {
+    const [updated] = await db
+      .update(votingSettings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(votingSettings.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Votes CRUD
+  async getVotes(sessionId?: string): Promise<Vote[]> {
+    if (sessionId) {
+      return await db.select().from(votes).where(eq(votes.sessionId, sessionId));
+    }
+    return await db.select().from(votes);
+  }
+
+  async getVotesByIdea(ideaId: string): Promise<Vote[]> {
+    return await db.select().from(votes).where(eq(votes.ideaId, ideaId));
+  }
+
+  async getVote(ideaId: string, sessionId: string): Promise<Vote | undefined> {
+    const [vote] = await db
+      .select()
+      .from(votes)
+      .where(and(eq(votes.ideaId, ideaId), eq(votes.sessionId, sessionId)));
+    return vote || undefined;
+  }
+
+  async upsertVote(insertVote: InsertVote): Promise<Vote> {
+    // Check if vote already exists
+    const existingVote = await this.getVote(insertVote.ideaId, insertVote.sessionId);
+    
+    if (existingVote) {
+      // Update existing vote
+      const [updated] = await db
+        .update(votes)
+        .set({ voteCount: insertVote.voteCount, updatedAt: new Date() })
+        .where(and(eq(votes.ideaId, insertVote.ideaId), eq(votes.sessionId, insertVote.sessionId)))
+        .returning();
+      
+      // Update idea totalVotes
+      await this.recalculateIdeaVotes(insertVote.ideaId);
+      
+      return updated;
+    } else {
+      // Insert new vote
+      const [newVote] = await db
+        .insert(votes)
+        .values(insertVote)
+        .returning();
+      
+      // Update idea totalVotes
+      await this.recalculateIdeaVotes(insertVote.ideaId);
+      
+      return newVote;
+    }
+  }
+
+  async deleteVote(ideaId: string, sessionId: string): Promise<boolean> {
+    const result = await db
+      .delete(votes)
+      .where(and(eq(votes.ideaId, ideaId), eq(votes.sessionId, sessionId)));
+    
+    // Update idea totalVotes
+    await this.recalculateIdeaVotes(ideaId);
+    
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async deleteAllVotes(): Promise<number> {
+    const result = await db.delete(votes);
+    
+    // Reset all ideas' totalVotes to 0
+    await db.update(ideas).set({ totalVotes: 0 });
+    
+    return result.rowCount || 0;
+  }
+
+  // Helper method to recalculate totalVotes for an idea
+  private async recalculateIdeaVotes(ideaId: string): Promise<void> {
+    const ideaVotes = await this.getVotesByIdea(ideaId);
+    const totalVotes = ideaVotes.reduce((sum, vote) => sum + vote.voteCount, 0);
+    
+    await db
+      .update(ideas)
+      .set({ totalVotes })
+      .where(eq(ideas.id, ideaId));
+  }
+
+  // Vote analytics
+  async getVoteAnalytics(): Promise<{
+    totalVotesCast: number;
+    totalParticipants: number;
+    topVotedIdeas: Array<{ ideaId: string; title: string; voteCount: number }>;
+  }> {
+    // Get total votes cast
+    const totalVotesResult = await db
+      .select({ total: sql<number>`SUM(${votes.voteCount})::int` })
+      .from(votes);
+    const totalVotesCast = totalVotesResult[0]?.total || 0;
+
+    // Get total unique participants
+    const participantsResult = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${votes.sessionId})::int` })
+      .from(votes);
+    const totalParticipants = participantsResult[0]?.count || 0;
+
+    // Get top voted ideas
+    const topVotedResult = await db
+      .select({
+        ideaId: ideas.id,
+        title: ideas.title,
+        voteCount: ideas.totalVotes
+      })
+      .from(ideas)
+      .orderBy(desc(ideas.totalVotes))
+      .limit(10);
+    
+    return {
+      totalVotesCast,
+      totalParticipants,
+      topVotedIdeas: topVotedResult
+    };
   }
 }
 

@@ -4,12 +4,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, List, Kanban } from 'lucide-react';
+import { Search, Filter, List, Kanban, ArrowUpDown } from 'lucide-react';
 import IdeaBrowser from './IdeaBrowser';
 import IdeaBoard from './IdeaBoard';
+import VotingBanner from './VotingBanner';
 import type { ViewSettings, Idea } from '@shared/schema';
 
 type ViewMode = 'list' | 'board';
+type SortBy = 'date-desc' | 'date-asc' | 'votes-desc' | 'votes-asc';
 
 interface IdeaViewerProps {
   onNavigateToSubmit?: () => void;
@@ -19,6 +21,7 @@ export default function IdeaViewer({ onNavigateToSubmit }: IdeaViewerProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [componentFilter, setComponentFilter] = useState('');
   const [tagFilter, setTagFilter] = useState('');
+  const [sortBy, setSortBy] = useState<SortBy>('date-desc');
 
   // Fetch view settings to determine default view
   const { data: viewSettings } = useQuery<ViewSettings>({
@@ -71,6 +74,9 @@ export default function IdeaViewer({ onNavigateToSubmit }: IdeaViewerProps) {
 
   return (
     <div className="space-y-6">
+      {/* Voting Banner */}
+      <VotingBanner />
+
       {/* Search and Filter Controls */}
       <Card>
         <CardContent className="p-4">
@@ -116,6 +122,20 @@ export default function IdeaViewer({ onNavigateToSubmit }: IdeaViewerProps) {
                     {tag}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+
+            {/* Sort Dropdown */}
+            <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortBy)}>
+              <SelectTrigger className="w-full md:w-48" data-testid="select-sort-by">
+                <ArrowUpDown className="w-4 h-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="votes-desc">Most Voted</SelectItem>
+                <SelectItem value="votes-asc">Least Voted</SelectItem>
+                <SelectItem value="date-desc">Newest First</SelectItem>
+                <SelectItem value="date-asc">Oldest First</SelectItem>
               </SelectContent>
             </Select>
 
