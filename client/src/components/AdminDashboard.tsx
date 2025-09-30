@@ -43,12 +43,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import type { SummitResource, InsertSummitResource, FormField, InsertFormField, FormFieldOption, InsertFormFieldOption, KanbanCategory, InsertKanbanCategory, ViewSettings, InsertViewSettings } from '@shared/schema';
+import { Skeleton } from '@/components/ui/skeleton';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import { HeaderSettingsAdmin } from './HeaderSettingsAdmin';
 import { LandingPageSettingsAdmin } from './LandingPageSettingsAdmin';
 import { HomeContentAdmin } from './HomeContentAdmin';
 
-// Mock data for admin - TODO: remove mock functionality
+// Keep Recent Activity as mock (API doesn't track activity log)
 const recentActivity = [
   { action: 'New idea submitted', user: 'Sarah Chen', time: '2 minutes ago', type: 'success' },
   { action: 'Export generated', user: 'Admin', time: '15 minutes ago', type: 'info' },
@@ -56,46 +57,18 @@ const recentActivity = [
   { action: 'Bulk delete performed', user: 'Admin', time: '2 hours ago', type: 'destructive' },
 ];
 
-const systemStats = {
-  totalIdeas: 145,
-  todaySubmissions: 28,
-  activeUsers: 89,
-  storageUsed: '2.4 MB',
-  uptime: '99.9%',
-  lastBackup: '10 minutes ago',
-};
-
-// 24-hour submission data for admin dashboard - TODO: remove mock functionality
-const hourlySubmissions = [
-  { hour: '00:00', submissions: 0, label: '12 AM' },
-  { hour: '01:00', submissions: 0, label: '1 AM' },
-  { hour: '02:00', submissions: 0, label: '2 AM' },
-  { hour: '03:00', submissions: 0, label: '3 AM' },
-  { hour: '04:00', submissions: 0, label: '4 AM' },
-  { hour: '05:00', submissions: 0, label: '5 AM' },
-  { hour: '06:00', submissions: 1, label: '6 AM' },
-  { hour: '07:00', submissions: 2, label: '7 AM' },
-  { hour: '08:00', submissions: 5, label: '8 AM' },
-  { hour: '09:00', submissions: 12, label: '9 AM' },
-  { hour: '10:00', submissions: 18, label: '10 AM' },
-  { hour: '11:00', submissions: 15, label: '11 AM' },
-  { hour: '12:00', submissions: 8, label: '12 PM' },
-  { hour: '13:00', submissions: 22, label: '1 PM' },
-  { hour: '14:00', submissions: 28, label: '2 PM' },
-  { hour: '15:00', submissions: 35, label: '3 PM' },
-  { hour: '16:00', submissions: 42, label: '4 PM' }, // Peak hour
-  { hour: '17:00', submissions: 38, label: '5 PM' },
-  { hour: '18:00', submissions: 25, label: '6 PM' },
-  { hour: '19:00', submissions: 12, label: '7 PM' },
-  { hour: '20:00', submissions: 8, label: '8 PM' },
-  { hour: '21:00', submissions: 3, label: '9 PM' },
-  { hour: '22:00', submissions: 1, label: '10 PM' },
-  { hour: '23:00', submissions: 0, label: '11 PM' },
-];
-
-const peakHourData = hourlySubmissions.reduce((max, current) => 
-  current.submissions > max.submissions ? current : max
-, hourlySubmissions[0]);
+// Statistics API response type
+interface StatisticsData {
+  totalIdeas: number;
+  todaySubmissions: number;
+  activeContributors: number;
+  hourlySubmissions: Array<{ hour: string; submissions: number }>;
+  submissionTypes: Array<{ type: string; count: number }>;
+  componentCounts: Array<{ component: string; count: number }>;
+  topContributors: Array<{ name: string; count: number }>;
+  trendingTags: Array<{ tag: string; count: number }>;
+  lastResetAt: string;
+}
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -148,6 +121,12 @@ export default function AdminDashboard() {
       return data;
     },
     enabled: !!selectedFieldId,
+  });
+
+  // Fetch statistics data
+  const { data: statistics, isLoading: isLoadingStatistics } = useQuery<StatisticsData>({
+    queryKey: ['/api/statistics'],
+    enabled: true,
   });
 
   // Auto-select first field if none selected
@@ -578,27 +557,39 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold" data-testid="text-total-ideas">
-              {systemStats.totalIdeas}
-            </div>
+            {isLoadingStatistics ? (
+              <Skeleton className="h-8 w-20 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold" data-testid="text-total-ideas">
+                {statistics?.totalIdeas ?? 0}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">Total Ideas</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-green-600" data-testid="text-today-submissions">
-              {systemStats.todaySubmissions}
-            </div>
+            {isLoadingStatistics ? (
+              <Skeleton className="h-8 w-16 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold text-green-600" data-testid="text-today-submissions">
+                {statistics?.todaySubmissions ?? 0}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">Today</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-blue-600" data-testid="text-active-users">
-              {systemStats.activeUsers}
-            </div>
+            {isLoadingStatistics ? (
+              <Skeleton className="h-8 w-16 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold text-blue-600" data-testid="text-active-users">
+                {statistics?.activeContributors ?? 0}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">Active Users</p>
           </CardContent>
         </Card>
@@ -606,7 +597,7 @@ export default function AdminDashboard() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold" data-testid="text-storage">
-              {systemStats.storageUsed}
+              2.4 MB
             </div>
             <p className="text-xs text-muted-foreground">Storage</p>
           </CardContent>
@@ -615,7 +606,7 @@ export default function AdminDashboard() {
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-green-600" data-testid="text-uptime">
-              {systemStats.uptime}
+              99.9%
             </div>
             <p className="text-xs text-muted-foreground">Uptime</p>
           </CardContent>
@@ -630,52 +621,94 @@ export default function AdminDashboard() {
             24-Hour Submission Pattern
           </CardTitle>
           <CardDescription>
-            Ideas submitted throughout the day - Peak hour: {peakHourData.label} ({peakHourData.submissions} submissions)
+            {isLoadingStatistics ? (
+              <Skeleton className="h-4 w-64" />
+            ) : (
+              (() => {
+                const hourlyData = statistics?.hourlySubmissions ?? [];
+                const chartData = hourlyData.map(item => ({
+                  ...item,
+                  label: new Date(`2000-01-01T${item.hour}`).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })
+                }));
+                const peakHour = chartData.length > 0 
+                  ? chartData.reduce((max, current) => current.submissions > max.submissions ? current : max, chartData[0])
+                  : { label: 'N/A', submissions: 0 };
+                return `Ideas submitted throughout the day - Peak hour: ${peakHour.label} (${peakHour.submissions} submissions)`;
+              })()
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={hourlySubmissions}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="label" 
-                tick={{ fontSize: 12 }}
-                interval={1}
-                angle={-45}
-                textAnchor="end"
-                height={60}
-              />
-              <YAxis />
-              <Tooltip 
-                formatter={(value, name) => [`${value} ideas`, 'Submissions']}
-                labelFormatter={(label) => `Time: ${label}`}
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '6px',
-                  color: 'hsl(var(--popover-foreground))'
-                }}
-              />
-              <ReferenceLine 
-                y={peakHourData.submissions} 
-                stroke="hsl(var(--destructive))" 
-                strokeDasharray="5 5"
-                label={{ value: "Peak", position: "insideTopRight" }}
-              />
-              <Bar 
-                dataKey="submissions" 
-                fill="hsl(var(--primary))"
-                radius={[2, 2, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="mt-4 p-3 bg-muted rounded-lg">
-            <div className="flex items-center justify-between text-sm">
-              <span>Peak Hour: <strong data-testid="text-peak-hour">{peakHourData.label}</strong></span>
-              <span>Peak Submissions: <strong>{peakHourData.submissions}</strong></span>
-              <span>Total Today: <strong>{hourlySubmissions.reduce((sum, h) => sum + h.submissions, 0)}</strong></span>
-            </div>
-          </div>
+          {isLoadingStatistics ? (
+            <Skeleton className="h-[300px] w-full" />
+          ) : (
+            (() => {
+              const hourlyData = statistics?.hourlySubmissions ?? [];
+              const chartData = hourlyData.map(item => ({
+                ...item,
+                label: new Date(`2000-01-01T${item.hour}`).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })
+              }));
+              const peakHour = chartData.length > 0 
+                ? chartData.reduce((max, current) => current.submissions > max.submissions ? current : max, chartData[0])
+                : { label: 'N/A', submissions: 0 };
+              const totalToday = chartData.reduce((sum, h) => sum + h.submissions, 0);
+              
+              return (
+                <>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="label" 
+                        tick={{ fontSize: 12 }}
+                        interval={chartData.length > 12 ? 1 : 0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis />
+                      <Tooltip 
+                        formatter={(value, name) => [`${value} ideas`, 'Submissions']}
+                        labelFormatter={(label) => `Time: ${label}`}
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--popover))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px',
+                          color: 'hsl(var(--popover-foreground))'
+                        }}
+                      />
+                      {peakHour.submissions > 0 && (
+                        <ReferenceLine 
+                          y={peakHour.submissions} 
+                          stroke="hsl(var(--destructive))" 
+                          strokeDasharray="5 5"
+                          label={{ value: "Peak", position: "insideTopRight" }}
+                        />
+                      )}
+                      <Bar 
+                        dataKey="submissions" 
+                        fill="hsl(var(--primary))"
+                        radius={[2, 2, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                  {chartData.length > 0 ? (
+                    <div className="mt-4 p-3 bg-muted rounded-lg">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Peak Hour: <strong data-testid="text-peak-hour">{peakHour.label}</strong></span>
+                        <span>Peak Submissions: <strong>{peakHour.submissions}</strong></span>
+                        <span>Total Today: <strong>{totalToday}</strong></span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 p-3 bg-muted rounded-lg text-center text-sm text-muted-foreground">
+                      No submission data available yet
+                    </div>
+                  )}
+                </>
+              );
+            })()
+          )}
         </CardContent>
       </Card>
 
