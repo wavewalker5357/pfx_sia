@@ -134,6 +134,7 @@ export interface IStorage {
 
   // Voting Settings CRUD
   getVotingSettings(): Promise<VotingSettings | undefined>;
+  createVotingSettings(settings: InsertVotingSettings): Promise<VotingSettings>;
   updateVotingSettings(id: string, updates: Partial<InsertVotingSettings>): Promise<VotingSettings | undefined>;
   
   // Votes CRUD
@@ -658,6 +659,14 @@ export class DatabaseStorage implements IStorage {
   async getVotingSettings(): Promise<VotingSettings | undefined> {
     const [settings] = await db.select().from(votingSettings).limit(1);
     return settings || undefined;
+  }
+
+  async createVotingSettings(settings: InsertVotingSettings): Promise<VotingSettings> {
+    const [created] = await db
+      .insert(votingSettings)
+      .values(settings)
+      .returning();
+    return created;
   }
 
   async updateVotingSettings(id: string, updates: Partial<InsertVotingSettings>): Promise<VotingSettings | undefined> {

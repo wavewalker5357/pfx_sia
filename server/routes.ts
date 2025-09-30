@@ -829,13 +829,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Voting Settings API routes
 
-  // GET /api/voting-settings - Get voting settings
+  // GET /api/voting-settings - Get voting settings (auto-creates if none exist)
   app.get("/api/voting-settings", async (req, res) => {
     try {
-      const settings = await storage.getVotingSettings();
+      let settings = await storage.getVotingSettings();
       
+      // Auto-create default settings if none exist
       if (!settings) {
-        return res.status(404).json({ error: "Voting settings not found" });
+        settings = await storage.createVotingSettings({
+          isOpen: "false",
+          maxVotesPerParticipant: 5,
+        });
       }
       
       res.json(settings);
