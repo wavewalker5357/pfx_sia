@@ -2,52 +2,54 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { TrendingUp, Users, Lightbulb, Tag, Award, Calendar } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Mock data for demo purposes - TODO: remove mock functionality
-const submissionData = [
-  { name: 'AI Story', value: 45, color: '#3b82f6' },
-  { name: 'AI Idea', value: 62, color: '#10b981' },
-  { name: 'AI Solution', value: 38, color: '#f59e0b' },
-];
+// Statistics API response type
+interface StatisticsData {
+  totalIdeas: number;
+  todaySubmissions: number;
+  activeContributors: number;
+  hourlySubmissions: Array<{ hour: string; submissions: number }>;
+  submissionTypes: Array<{ type: string; count: number }>;
+  componentCounts: Array<{ component: string; count: number }>;
+  topContributors: Array<{ name: string; count: number }>;
+  trendingTags: Array<{ tag: string; count: number }>;
+  lastResetAt: string;
+}
 
-const componentData = [
-  { component: 'Frontend', count: 25 },
-  { component: 'AI/ML', count: 42 },
-  { component: 'Backend', count: 18 },
-  { component: 'Data', count: 15 },
-  { component: 'Product', count: 12 },
-  { component: 'Other', count: 8 },
-];
-
-const timelineData = [
-  { time: '09:00', submissions: 5 },
-  { time: '10:00', submissions: 12 },
-  { time: '11:00', submissions: 18 },
-  { time: '12:00', submissions: 8 },
-  { time: '13:00', submissions: 15 },
-  { time: '14:00', submissions: 22 },
-  { time: '15:00', submissions: 28 },
-  { time: '16:00', submissions: 35 },
-];
-
-const topContributors = [
-  { name: 'Sarah Chen', count: 8 },
-  { name: 'Alex Rodriguez', count: 6 },
-  { name: 'Jordan Kim', count: 5 },
-  { name: 'Taylor Swift', count: 4 },
-  { name: 'Morgan Lee', count: 4 },
-];
-
-const trendingTags = [
-  { tag: 'automation', count: 28 },
-  { tag: 'productivity', count: 24 },
-  { tag: 'innovation', count: 22 },
-  { tag: 'efficiency', count: 18 },
-  { tag: 'collaboration', count: 15 },
-];
+// Color palette for charts
+const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
 export default function AnalyticsDashboard() {
-  const totalSubmissions = submissionData.reduce((sum, item) => sum + item.value, 0);
+  // Fetch statistics data
+  const { data: statistics, isLoading } = useQuery<StatisticsData>({
+    queryKey: ['/api/statistics'],
+    enabled: true,
+  });
+
+  // Derive chart data from statistics
+  const totalIdeas = statistics?.totalIdeas ?? 0;
+  const activeContributors = statistics?.activeContributors ?? 0;
+  
+  const submissionTypes = (statistics?.submissionTypes ?? []).map((item, index) => ({
+    name: item.type,
+    value: item.count,
+    color: CHART_COLORS[index % CHART_COLORS.length]
+  }));
+  
+  const trendingType = submissionTypes.length > 0 
+    ? submissionTypes.reduce((max, current) => current.value > max.value ? current : max, submissionTypes[0])
+    : { name: 'N/A', value: 0 };
+  
+  const hourlyData = (statistics?.hourlySubmissions ?? []).map(item => ({
+    time: new Date(`2000-01-01T${item.hour}`).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true }),
+    submissions: item.submissions
+  }));
+  
+  const peakHour = hourlyData.length > 0
+    ? hourlyData.reduce((max, current) => current.submissions > max.submissions ? current : max, hourlyData[0])
+    : { time: 'N/A', submissions: 0 };
 
   return (
     <div className="space-y-6">
@@ -59,9 +61,13 @@ export default function AnalyticsDashboard() {
             <Lightbulb className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-total-submissions">{totalSubmissions}</div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold" data-testid="text-total-submissions">{totalIdeas}</div>
+            )}
             <p className="text-xs text-muted-foreground">
-              +12% from yesterday
+              All time submissions
             </p>
           </CardContent>
         </Card>
@@ -72,9 +78,13 @@ export default function AnalyticsDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-contributors">89</div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold" data-testid="text-contributors">{activeContributors}</div>
+            )}
             <p className="text-xs text-muted-foreground">
-              59% of attendees
+              Unique contributors
             </p>
           </CardContent>
         </Card>
@@ -85,9 +95,13 @@ export default function AnalyticsDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-trending">AI Idea</div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold" data-testid="text-trending">{trendingType.name}</div>
+            )}
             <p className="text-xs text-muted-foreground">
-              62 submissions
+              {isLoading ? <Skeleton className="h-3 w-20" /> : `${trendingType.value} submissions`}
             </p>
           </CardContent>
         </Card>
@@ -98,9 +112,13 @@ export default function AnalyticsDashboard() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-peak-hour">4:00 PM</div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold" data-testid="text-peak-hour">{peakHour.time}</div>
+            )}
             <p className="text-xs text-muted-foreground">
-              35 submissions
+              {isLoading ? <Skeleton className="h-3 w-20" /> : `${peakHour.submissions} submissions`}
             </p>
           </CardContent>
         </Card>
@@ -115,24 +133,32 @@ export default function AnalyticsDashboard() {
             <CardDescription>Distribution of idea types submitted</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={submissionData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {submissionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : submissionTypes.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={submissionTypes}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {submissionTypes.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No submission type data available yet
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -143,14 +169,22 @@ export default function AnalyticsDashboard() {
             <CardDescription>Which areas are getting the most attention</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={componentData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="component" />
-                <YAxis />
-                <Bar dataKey="count" fill="hsl(var(--primary))" />
-              </BarChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : (statistics?.componentCounts ?? []).length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={statistics?.componentCounts ?? []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="component" />
+                  <YAxis />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No component data available yet
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -164,19 +198,27 @@ export default function AnalyticsDashboard() {
             <CardDescription>Ideas submitted throughout the day</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={timelineData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" />
-                <YAxis />
-                <Line 
-                  type="monotone" 
-                  dataKey="submissions" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={2}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <Skeleton className="h-[250px] w-full" />
+            ) : hourlyData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={hourlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="time" />
+                  <YAxis />
+                  <Line 
+                    type="monotone" 
+                    dataKey="submissions" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+                No timeline data available yet
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -190,19 +232,32 @@ export default function AnalyticsDashboard() {
             <CardDescription>Most active participants</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {topContributors.map((contributor, index) => (
-              <div key={contributor.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="w-6 h-6 rounded-full p-0 flex items-center justify-center text-xs">
-                    {index + 1}
-                  </Badge>
-                  <span className="text-sm font-medium" data-testid={`text-contributor-${index}`}>
-                    {contributor.name}
-                  </span>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-5 w-8" />
                 </div>
-                <Badge variant="outline">{contributor.count}</Badge>
+              ))
+            ) : (statistics?.topContributors ?? []).length > 0 ? (
+              (statistics?.topContributors ?? []).map((contributor, index) => (
+                <div key={contributor.name} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="w-6 h-6 rounded-full p-0 flex items-center justify-center text-xs">
+                      {index + 1}
+                    </Badge>
+                    <span className="text-sm font-medium" data-testid={`text-contributor-${index}`}>
+                      {contributor.name}
+                    </span>
+                  </div>
+                  <Badge variant="outline">{contributor.count}</Badge>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-muted-foreground py-4">
+                No contributors yet
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
       </div>
@@ -217,18 +272,30 @@ export default function AnalyticsDashboard() {
           <CardDescription>Most popular tags being used</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {trendingTags.map((tag) => (
-              <Badge 
-                key={tag.tag} 
-                variant="secondary" 
-                className="text-sm"
-                data-testid={`badge-tag-${tag.tag}`}
-              >
-                {tag.tag} ({tag.count})
-              </Badge>
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Skeleton key={index} className="h-6 w-24" />
+              ))}
+            </div>
+          ) : (statistics?.trendingTags ?? []).length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {(statistics?.trendingTags ?? []).map((tag) => (
+                <Badge 
+                  key={tag.tag} 
+                  variant="secondary" 
+                  className="text-sm"
+                  data-testid={`badge-tag-${tag.tag}`}
+                >
+                  {tag.tag} ({tag.count})
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-muted-foreground py-4">
+              No trending tags yet
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
