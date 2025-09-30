@@ -32,8 +32,12 @@ Preferred communication style: Simple, everyday language.
   - Public (password-protected attendee access)
   - Admin (username/password protected administrative access)
   - No access (landing page only)
-- **Session-based**: Express sessions for maintaining user state
+- **Client-Side Authentication**: Currently uses sessionStorage with hardcoded credentials
+  - Attendee password: `summit2025`
+  - Admin credentials: `admin` / `admin123`
 - **Role-based Features**: Different UI components and capabilities based on user role
+
+**⚠️ Security Limitation**: This is a prototype/demo application with **client-side-only authentication**. Backend API endpoints are not protected by server-side authentication middleware. All admin routes (including DELETE /api/ideas, form field management, settings updates, etc.) can be accessed directly without authentication. This design is suitable for trusted environments or demonstrations but should not be used in production without implementing proper server-side authentication (express-session, passport, JWT, etc.).
 
 ### Data Storage
 - **Primary Database**: PostgreSQL with connection pooling via Neon serverless
