@@ -650,7 +650,7 @@ export default function AdminDashboard() {
                 const hourlyData = statistics?.hourlySubmissions ?? [];
                 const chartData = hourlyData.map(item => ({
                   ...item,
-                  label: new Date(`2000-01-01T${item.hour}`).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })
+                  label: new Date(item.hour.replace(' ', 'T')).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })
                 }));
                 const peakHour = chartData.length > 0 
                   ? chartData.reduce((max, current) => current.submissions > max.submissions ? current : max, chartData[0])
@@ -668,7 +668,7 @@ export default function AdminDashboard() {
               const hourlyData = statistics?.hourlySubmissions ?? [];
               const chartData = hourlyData.map(item => ({
                 ...item,
-                label: new Date(`2000-01-01T${item.hour}`).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })
+                label: new Date(item.hour.replace(' ', 'T')).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })
               }));
               const peakHour = chartData.length > 0 
                 ? chartData.reduce((max, current) => current.submissions > max.submissions ? current : max, chartData[0])
