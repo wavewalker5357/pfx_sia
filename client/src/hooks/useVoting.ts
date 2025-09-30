@@ -35,12 +35,37 @@ export function useVoting() {
         voteCount
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/votes', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/ideas'] });
+    onSuccess: async () => {
+      // Force immediate refetch instead of just invalidating
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['/api/votes', sessionId] }),
+        queryClient.refetchQueries({ queryKey: ['/api/ideas'] })
+      ]);
     },
     onError: (error: any) => {
       const message = error.response?.data?.error || 'Failed to cast vote';
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete vote mutation
+  const deleteVoteMutation = useMutation({
+    mutationFn: async (ideaId: string) => {
+      return apiRequest('DELETE', `/api/votes/${ideaId}?sessionId=${sessionId}`);
+    },
+    onSuccess: async () => {
+      // Force immediate refetch instead of just invalidating
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['/api/votes', sessionId] }),
+        queryClient.refetchQueries({ queryKey: ['/api/ideas'] })
+      ]);
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.error || 'Failed to remove vote';
       toast({
         title: "Error",
         description: message,
@@ -70,7 +95,7 @@ export function useVoting() {
     }
   };
 
-  const vote = async (ideaId: string, increment: boolean) => {
+  const vote = (ideaId: string, increment: boolean) => {
     const myVotes = getMyVotesForIdea(ideaId);
     const newVoteCount = increment ? myVotes + 1 : myVotes - 1;
 
@@ -78,9 +103,7 @@ export function useVoting() {
 
     if (newVoteCount === 0) {
       // Remove vote entirely
-      await apiRequest('DELETE', `/api/votes/${ideaId}?sessionId=${sessionId}`);
-      queryClient.invalidateQueries({ queryKey: ['/api/votes', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/ideas'] });
+      deleteVoteMutation.mutate(ideaId);
     } else {
       voteMutation.mutate({ ideaId, voteCount: newVoteCount });
     }
@@ -94,6 +117,6 @@ export function useVoting() {
     getMyVotesForIdea,
     canVote,
     vote,
-    isVoting: voteMutation.isPending,
+    isVoting: voteMutation.isPending || deleteVoteMutation.isPending,
   };
 }
