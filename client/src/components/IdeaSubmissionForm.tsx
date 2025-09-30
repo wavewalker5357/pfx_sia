@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -7,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -86,6 +87,18 @@ export default function IdeaSubmissionForm() {
             ? z.string().min(1, `${field.label} is required`).max(1000, `${field.label} must not exceed 1000 characters`)
             : z.string().max(1000, `${field.label} must not exceed 1000 characters`).optional();
           break;
+        case 'list':
+          // Handle multi-select fields
+          if (field.allowMultiSelect === 'true') {
+            validation = field.required === 'true'
+              ? z.array(z.string()).min(1, `${field.label} is required`)
+              : z.array(z.string()).optional();
+          } else {
+            validation = field.required === 'true'
+              ? z.string().min(1, `${field.label} is required`)
+              : z.string().optional();
+          }
+          break;
         default:
           validation = field.required === 'true'
             ? z.string().min(1, `${field.label} is required`)
@@ -109,7 +122,8 @@ export default function IdeaSubmissionForm() {
     
     // Dynamic fields based on form configuration
     ...formFields.reduce((acc, field) => {
-      acc[field.name] = '';
+      // Multi-select fields default to empty array, others to empty string
+      acc[field.name] = (field.type === 'list' && field.allowMultiSelect === 'true') ? [] : '';
       return acc;
     }, {} as Record<string, any>)
   };
@@ -154,9 +168,22 @@ export default function IdeaSubmissionForm() {
       if (dynamicFields.length > 0) {
         console.log('Storing dynamic fields:', dynamicFields);
         for (const [fieldName, value] of dynamicFields) {
-          if (value && value !== '') {
-            const field = formFields.find(f => f.name === fieldName);
-            if (field) {
+          const field = formFields.find(f => f.name === fieldName);
+          if (field && value) {
+            // Handle multi-select fields (array values)
+            if (Array.isArray(value)) {
+              // Create a separate row for each selected value
+              for (const singleValue of value) {
+                if (singleValue && singleValue !== '') {
+                  await apiRequest('POST', '/api/idea-dynamic-fields', {
+                    ideaId: idea.id,
+                    fieldId: field.id,
+                    value: String(singleValue)
+                  });
+                }
+              }
+            } else if (value !== '') {
+              // Single value field
               await apiRequest('POST', '/api/idea-dynamic-fields', {
                 ideaId: idea.id,
                 fieldId: field.id,
@@ -324,9 +351,143 @@ export default function IdeaSubmissionForm() {
 
       case 'list':
         const allowUserAdditions = field.allowUserAdditions === 'true';
+        const allowMultiSelect = field.allowMultiSelect === 'true';
         
-        if (allowUserAdditions) {
-          // Render Combobox for fields that allow user additions
+        if (allowMultiSelect) {
+          // Render Multi-Select Combobox
+          return (
+            <FormField
+              key={field.id}
+              control={form.control}
+              name={field.name}
+              render={({ field: formField }) => {
+                const { open, searchValue } = getFieldState(field.id);
+                const selectedValues = Array.isArray(formField.value) ? formField.value : [];
+                
+                const handleSelect = (value: string) => {
+                  const newValues = selectedValues.includes(value)
+                    ? selectedValues.filter(v => v !== value)
+                    : [...selectedValues, value];
+                  formField.onChange(newValues);
+                };
+                
+                const handleRemove = (value: string) => {
+                  formField.onChange(selectedValues.filter(v => v !== value));
+                };
+                
+                const handleCreateOption = () => {
+                  if (allowUserAdditions && searchValue.trim() && !fieldOptions.some(opt => opt.value === searchValue.trim())) {
+                    const nextOrder = Math.max(0, ...fieldOptions.map(opt => parseInt(opt.order || '0'))) + 1;
+                    addFieldOptionMutation.mutate({
+                      fieldId: field.id,
+                      value: searchValue.trim(),
+                      label: searchValue.trim(),
+                      order: nextOrder.toString()
+                    });
+                    handleSelect(searchValue.trim());
+                    setFieldState(field.id, { searchValue: '' });
+                  }
+                };
+
+                return (
+                  <FormItem>
+                    <FormLabel>{field.label}</FormLabel>
+                    <Popover open={open} onOpenChange={(isOpen) => setFieldState(field.id, { open: isOpen })}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className="w-full justify-between min-h-10"
+                            data-testid={`multiselect-${field.name}`}
+                          >
+                            <div className="flex flex-wrap gap-1 flex-1">
+                              {selectedValues.length > 0 ? (
+                                selectedValues.map((value) => {
+                                  const option = fieldOptions.find(opt => opt.value === value);
+                                  return (
+                                    <Badge key={value} variant="secondary" className="text-xs">
+                                      {option?.label || value}
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRemove(value);
+                                        }}
+                                        className="ml-1 hover:text-destructive"
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    </Badge>
+                                  );
+                                })
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  {field.placeholder || `Select ${field.label.toLowerCase()}`}
+                                </span>
+                              )}
+                            </div>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0">
+                        <Command>
+                          <CommandInput 
+                            placeholder={allowUserAdditions ? `Search or add ${field.label.toLowerCase()}...` : `Search ${field.label.toLowerCase()}...`}
+                            value={searchValue}
+                            onValueChange={(value) => setFieldState(field.id, { searchValue: value })}
+                          />
+                          <CommandList>
+                            <CommandEmpty>
+                              {allowUserAdditions && searchValue.trim() ? (
+                                <div className="p-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={handleCreateOption}
+                                    className="w-full"
+                                    data-testid={`button-add-${field.name}`}
+                                  >
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Add "{searchValue.trim()}"
+                                  </Button>
+                                </div>
+                              ) : (
+                                `No ${field.label.toLowerCase()} found.`
+                              )}
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {fieldOptions.map((option) => (
+                                <CommandItem
+                                  key={option.id}
+                                  value={option.value}
+                                  onSelect={() => handleSelect(option.value)}
+                                >
+                                  <Check
+                                    className={`mr-2 h-4 w-4 ${
+                                      selectedValues.includes(option.value) ? "opacity-100" : "opacity-0"
+                                    }`}
+                                  />
+                                  {option.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {field.helpText && (
+                      <p className="text-sm text-muted-foreground">{field.helpText}</p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+          );
+        } else if (allowUserAdditions) {
+          // Render Single-Select Combobox for fields that allow user additions
           return (
             <FormField
               key={field.id}

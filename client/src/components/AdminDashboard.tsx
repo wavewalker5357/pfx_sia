@@ -93,6 +93,7 @@ export default function AdminDashboard() {
     placeholder: '',
     helpText: '',
     allowUserAdditions: false,
+    allowMultiSelect: false,
     order: ''
   });
 
@@ -248,6 +249,7 @@ export default function AdminDashboard() {
         ...field,
         required: typeof field.required === 'boolean' ? (field.required ? 'true' : 'false') : field.required,
         allowUserAdditions: typeof field.allowUserAdditions === 'boolean' ? (field.allowUserAdditions ? 'true' : 'false') : field.allowUserAdditions,
+        allowMultiSelect: typeof field.allowMultiSelect === 'boolean' ? (field.allowMultiSelect ? 'true' : 'false') : field.allowMultiSelect,
         isActive: typeof field.isActive === 'boolean' ? (field.isActive ? 'true' : 'false') : field.isActive,
       };
       return apiRequest('POST', '/api/form-fields', convertedField);
@@ -266,7 +268,8 @@ export default function AdminDashboard() {
         required: false,
         placeholder: '',
         helpText: '',
-        allowUserAdditions: false
+        allowUserAdditions: false,
+        allowMultiSelect: false
       });
     },
     onError: () => {
@@ -285,6 +288,7 @@ export default function AdminDashboard() {
         ...data,
         required: typeof data.required === 'boolean' ? (data.required ? 'true' : 'false') : data.required,
         allowUserAdditions: typeof data.allowUserAdditions === 'boolean' ? (data.allowUserAdditions ? 'true' : 'false') : data.allowUserAdditions,
+        allowMultiSelect: typeof data.allowMultiSelect === 'boolean' ? (data.allowMultiSelect ? 'true' : 'false') : data.allowMultiSelect,
         isActive: typeof data.isActive === 'boolean' ? (data.isActive ? 'true' : 'false') : data.isActive,
       };
       return apiRequest('PUT', `/api/form-fields/${id}`, convertedData);
@@ -1151,6 +1155,7 @@ export default function AdminDashboard() {
                                   ...field,
                                   required: field.required === 'true',
                                   allowUserAdditions: field.allowUserAdditions === 'true',
+                                  allowMultiSelect: field.allowMultiSelect === 'true',
                                   isActive: field.isActive === 'true'
                                 } as any);
                               }}
@@ -1422,16 +1427,28 @@ export default function AdminDashboard() {
                   </div>
 
                   {newFieldForm.type === 'list' && (
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="field-allow-additions"
-                        checked={newFieldForm.allowUserAdditions}
-                        onChange={(e) => setNewFieldForm(prev => ({ ...prev, allowUserAdditions: e.target.checked }))}
-                        data-testid="checkbox-allow-additions"
-                      />
-                      <Label htmlFor="field-allow-additions">Allow users to add new options</Label>
-                    </div>
+                    <>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="field-allow-additions"
+                          checked={newFieldForm.allowUserAdditions}
+                          onChange={(e) => setNewFieldForm(prev => ({ ...prev, allowUserAdditions: e.target.checked }))}
+                          data-testid="checkbox-allow-additions"
+                        />
+                        <Label htmlFor="field-allow-additions">Allow users to add new options</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="field-allow-multiselect"
+                          checked={newFieldForm.allowMultiSelect}
+                          onChange={(e) => setNewFieldForm(prev => ({ ...prev, allowMultiSelect: e.target.checked }))}
+                          data-testid="checkbox-allow-multiselect"
+                        />
+                        <Label htmlFor="field-allow-multiselect">Allow multi-select</Label>
+                      </div>
+                    </>
                   )}
                 </CardContent>
                 <div className="p-6 pt-0 flex gap-2">
@@ -1445,6 +1462,7 @@ export default function AdminDashboard() {
                         placeholder: newFieldForm.placeholder || null,
                         helpText: newFieldForm.helpText || null,
                         allowUserAdditions: newFieldForm.allowUserAdditions ? 'true' : 'false',
+                        allowMultiSelect: newFieldForm.allowMultiSelect ? 'true' : 'false',
                         order: newFieldForm.order || formFields.length.toString(),
                         isActive: 'true'
                       });
@@ -1466,6 +1484,7 @@ export default function AdminDashboard() {
                         placeholder: '',
                         helpText: '',
                         allowUserAdditions: false,
+                        allowMultiSelect: false,
                         order: ''
                       });
                     }}
@@ -1570,16 +1589,28 @@ export default function AdminDashboard() {
                   </div>
 
                   {editingField.type === 'list' && (
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="edit-field-allow-additions"
-                        checked={editingField.allowUserAdditions === 'true'}
-                        onChange={(e) => setEditingField(prev => prev ? { ...prev, allowUserAdditions: e.target.checked ? 'true' : 'false' } : null)}
-                        data-testid="checkbox-edit-allow-additions"
-                      />
-                      <Label htmlFor="edit-field-allow-additions">Allow users to add new options</Label>
-                    </div>
+                    <>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="edit-field-allow-additions"
+                          checked={editingField.allowUserAdditions === 'true'}
+                          onChange={(e) => setEditingField(prev => prev ? { ...prev, allowUserAdditions: e.target.checked ? 'true' : 'false' } : null)}
+                          data-testid="checkbox-edit-allow-additions"
+                        />
+                        <Label htmlFor="edit-field-allow-additions">Allow users to add new options</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="edit-field-allow-multiselect"
+                          checked={editingField.allowMultiSelect === 'true'}
+                          onChange={(e) => setEditingField(prev => prev ? { ...prev, allowMultiSelect: e.target.checked ? 'true' : 'false' } : null)}
+                          data-testid="checkbox-edit-allow-multiselect"
+                        />
+                        <Label htmlFor="edit-field-allow-multiselect">Allow multi-select</Label>
+                      </div>
+                    </>
                   )}
                 </CardContent>
                 <div className="p-6 pt-0 flex gap-2">
@@ -1595,6 +1626,7 @@ export default function AdminDashboard() {
                           placeholder: editingField.placeholder || null,
                           helpText: editingField.helpText || null,
                           allowUserAdditions: editingField.allowUserAdditions,
+                          allowMultiSelect: editingField.allowMultiSelect,
                           order: editingField.order,
                         }
                       });
