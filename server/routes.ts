@@ -101,6 +101,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DELETE /api/ideas - Delete all ideas (admin only)
+  app.delete("/api/ideas", async (req, res) => {
+    try {
+      const deletedCount = await storage.deleteAllIdeas();
+      res.json({ deletedCount, message: `Successfully deleted ${deletedCount} ideas` });
+    } catch (error) {
+      console.error("Error deleting all ideas:", error);
+      res.status(500).json({ error: "Failed to delete all ideas" });
+    }
+  });
+
   // PATCH /api/ideas/:id/category - Update idea category (for drag and drop)
   app.patch("/api/ideas/:id/category", async (req, res) => {
     try {

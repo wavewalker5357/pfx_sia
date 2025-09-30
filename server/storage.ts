@@ -49,6 +49,7 @@ export interface IStorage {
   updateIdea(id: string, updates: Partial<InsertIdea>): Promise<Idea | undefined>;
   updateIdeaCategory(id: string, type: string): Promise<Idea | undefined>;
   deleteIdea(id: string): Promise<boolean>;
+  deleteAllIdeas(): Promise<number>;
   
   // Summit Resources CRUD
   getSummitResources(): Promise<SummitResource[]>;
@@ -172,6 +173,14 @@ export class DatabaseStorage implements IStorage {
   async deleteIdea(id: string): Promise<boolean> {
     const result = await db.delete(ideas).where(eq(ideas.id, id));
     return (result.rowCount || 0) > 0;
+  }
+
+  async deleteAllIdeas(): Promise<number> {
+    // First delete all dynamic fields associated with ideas
+    await db.delete(ideaDynamicFields);
+    // Then delete all ideas
+    const result = await db.delete(ideas);
+    return result.rowCount || 0;
   }
 
   // Summit Resources CRUD
