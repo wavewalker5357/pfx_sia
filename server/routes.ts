@@ -11,7 +11,9 @@ import {
   insertKanbanCategorySchema,
   insertViewSettingsSchema,
   insertLandingPageSettingsSchema,
-  insertSummitHomeContentSchema
+  insertSummitHomeContentSchema,
+  insertVoteSchema,
+  insertVotingSettingsSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -822,6 +824,192 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error resetting statistics:", error);
       res.status(500).json({ error: "Failed to reset statistics" });
+    }
+  });
+
+  // Voting Settings API routes
+
+  // GET /api/voting-settings - Get voting settings
+  app.get("/api/voting-settings", async (req, res) => {
+    try {
+      const settings = await storage.getVotingSettings();
+      
+      if (!settings) {
+        return res.status(404).json({ error: "Voting settings not found" });
+      }
+      
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching voting settings:", error);
+      res.status(500).json({ error: "Failed to fetch voting settings" });
+    }
+  });
+
+  // PATCH /api/voting-settings/:id - Update voting settings (admin only)
+  app.patch("/api/voting-settings/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertVotingSettingsSchema.partial().parse(req.body);
+      
+      // If isOpen is being set to true, record startedAt
+      if (validatedData.isOpen === "true") {
+        validatedData.startedAt = new Date();
+      }
+      // If isOpen is being set to false, record closedAt
+      if (validatedData.isOpen === "false") {
+        validatedData.closedAt = new Date();
+      }
+      
+      const settings = await storage.updateVotingSettings(id, validatedData);
+      
+      if (!settings) {
+        return res.status(404).json({ error: "Voting settings not found" });
+      }
+      
+      res.json(settings);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error updating voting settings:", error);
+        res.status(500).json({ error: "Failed to update voting settings" });
+      }
+    }
+  });
+
+  // Votes API routes
+
+  // GET /api/votes - Get votes for current session
+  app.get("/api/votes", async (req, res) => {
+    try {
+      const { sessionId } = req.query;
+      
+      if (!sessionId || typeof sessionId !== 'string') {
+        return res.status(400).json({ error: "sessionId query parameter is required" });
+      }
+      
+      const votes = await storage.getVotes(sessionId);
+      res.json(votes);
+    } catch (error) {
+      console.error("Error fetching votes:", error);
+      res.status(500).json({ error: "Failed to fetch votes" });
+    }
+  });
+
+  // GET /api/ideas/:ideaId/votes - Get total votes for a specific idea
+  app.get("/api/ideas/:ideaId/votes", async (req, res) => {
+    try {
+      const { ideaId } = req.params;
+      const ideaVotes = await storage.getVotesByIdea(ideaId);
+      const totalVotes = ideaVotes.reduce((sum, vote) => sum + vote.voteCount, 0);
+      
+      res.json({ 
+        ideaId,
+        totalVotes,
+        votes: ideaVotes
+      });
+    } catch (error) {
+      console.error("Error fetching idea votes:", error);
+      res.status(500).json({ error: "Failed to fetch idea votes" });
+    }
+  });
+
+  // POST /api/votes - Cast or update vote
+  app.post("/api/votes", async (req, res) => {
+    try {
+      const validatedData = insertVoteSchema.parse(req.body);
+      
+      // Validate voting is open
+      const settings = await storage.getVotingSettings();
+      if (!settings || settings.isOpen !== "true") {
+        return res.status(403).json({ error: "Voting is currently closed" });
+      }
+      
+      // Validate vote count is positive (default to 1 if not provided)
+      const voteCount = validatedData.voteCount ?? 1;
+      if (voteCount <= 0) {
+        return res.status(400).json({ error: "Vote count must be positive" });
+      }
+      
+      // Check if user has exceeded max votes
+      const userVotes = await storage.getVotes(validatedData.sessionId);
+      const currentVoteOnIdea = userVotes.find(v => v.ideaId === validatedData.ideaId);
+      const totalUsed = userVotes.reduce((sum, v) => sum + v.voteCount, 0);
+      const currentOnIdea = currentVoteOnIdea ? currentVoteOnIdea.voteCount : 0;
+      const newTotal = totalUsed - currentOnIdea + voteCount;
+      
+      if (newTotal > settings.maxVotesPerParticipant) {
+        return res.status(400).json({ 
+          error: "Exceeds maximum votes allowed",
+          maxVotes: settings.maxVotesPerParticipant,
+          currentUsed: totalUsed,
+          remaining: settings.maxVotesPerParticipant - totalUsed
+        });
+      }
+      
+      const vote = await storage.upsertVote({ ...validatedData, voteCount });
+      res.status(200).json(vote);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation error", details: error.errors });
+      } else {
+        console.error("Error casting vote:", error);
+        res.status(500).json({ error: "Failed to cast vote" });
+      }
+    }
+  });
+
+  // DELETE /api/votes/:ideaId - Remove vote from specific idea
+  app.delete("/api/votes/:ideaId", async (req, res) => {
+    try {
+      const { ideaId } = req.params;
+      const { sessionId } = req.query;
+      
+      if (!sessionId || typeof sessionId !== 'string') {
+        return res.status(400).json({ error: "sessionId query parameter is required" });
+      }
+      
+      // Validate voting is open
+      const settings = await storage.getVotingSettings();
+      if (!settings || settings.isOpen !== "true") {
+        return res.status(403).json({ error: "Voting is currently closed" });
+      }
+      
+      const deleted = await storage.deleteVote(ideaId, sessionId);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Vote not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting vote:", error);
+      res.status(500).json({ error: "Failed to delete vote" });
+    }
+  });
+
+  // DELETE /api/votes - Reset all votes (admin only)
+  app.delete("/api/votes", async (req, res) => {
+    try {
+      const deletedCount = await storage.deleteAllVotes();
+      res.json({ 
+        deletedCount,
+        message: `Successfully deleted ${deletedCount} votes`
+      });
+    } catch (error) {
+      console.error("Error deleting all votes:", error);
+      res.status(500).json({ error: "Failed to delete all votes" });
+    }
+  });
+
+  // GET /api/vote-analytics - Get voting analytics (admin only)
+  app.get("/api/vote-analytics", async (req, res) => {
+    try {
+      const analytics = await storage.getVoteAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching vote analytics:", error);
+      res.status(500).json({ error: "Failed to fetch vote analytics" });
     }
   });
 

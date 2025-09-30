@@ -38,12 +38,15 @@ import {
   Kanban,
   GripVertical,
   Globe,
-  RotateCcw
+  RotateCcw,
+  Vote,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import type { SummitResource, InsertSummitResource, FormField, InsertFormField, FormFieldOption, InsertFormFieldOption, KanbanCategory, InsertKanbanCategory, ViewSettings, InsertViewSettings } from '@shared/schema';
+import type { SummitResource, InsertSummitResource, FormField, InsertFormField, FormFieldOption, InsertFormFieldOption, KanbanCategory, InsertKanbanCategory, ViewSettings, InsertViewSettings, VotingSettings } from '@shared/schema';
 import { Skeleton } from '@/components/ui/skeleton';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import { HeaderSettingsAdmin } from './HeaderSettingsAdmin';
@@ -81,6 +84,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [showResetStatsDialog, setShowResetStatsDialog] = useState(false);
+  const [showResetVotesDialog, setShowResetVotesDialog] = useState(false);
   const [editingField, setEditingField] = useState<FormField | null>(null);
   const [showNewFieldDialog, setShowNewFieldDialog] = useState(false);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
@@ -129,6 +133,12 @@ export default function AdminDashboard() {
   // Fetch statistics data
   const { data: statistics, isLoading: isLoadingStatistics } = useQuery<StatisticsData>({
     queryKey: ['/api/statistics'],
+    enabled: true,
+  });
+
+  // Fetch voting settings
+  const { data: votingSettings, isLoading: isLoadingVoting } = useQuery<VotingSettings>({
+    queryKey: ['/api/voting-settings'],
     enabled: true,
   });
 
@@ -239,6 +249,78 @@ export default function AdminDashboard() {
     onError: () => {
       toast({ title: "Error", description: "Failed to reset statistics", variant: "destructive" });
     }
+  });
+
+  // Voting mutations
+  const toggleVotingMutation = useMutation({
+    mutationFn: async (isOpen: boolean) => {
+      if (!votingSettings) throw new Error('Voting settings not loaded');
+      return apiRequest('PATCH', `/api/voting-settings/${votingSettings.id}`, {
+        isOpen: isOpen ? 'true' : 'false'
+      });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/voting-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ideas'] });
+      toast({
+        title: data.isOpen === 'true' ? "Voting Opened" : "Voting Closed",
+        description: data.isOpen === 'true' 
+          ? "Participants can now vote on ideas."
+          : "Voting has been closed. Results are now final.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update voting status",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateMaxVotesMutation = useMutation({
+    mutationFn: async (maxVotes: number) => {
+      if (!votingSettings) throw new Error('Voting settings not loaded');
+      return apiRequest('PATCH', `/api/voting-settings/${votingSettings.id}`, {
+        maxVotesPerParticipant: maxVotes
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/voting-settings'] });
+      toast({
+        title: "Settings Updated",
+        description: "Maximum votes per participant has been updated.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update voting settings",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetVotesMutation = useMutation({
+    mutationFn: () => apiRequest('DELETE', '/api/votes'),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/ideas'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/votes'] });
+      setShowResetVotesDialog(false);
+      toast({
+        title: "All Votes Reset",
+        description: `Successfully deleted ${data.deletedCount} vote${data.deletedCount !== 1 ? 's' : ''}.`,
+        variant: "destructive",
+      });
+    },
+    onError: () => {
+      setShowResetVotesDialog(false);
+      toast({
+        title: "Error",
+        description: "Failed to reset votes",
+        variant: "destructive",
+      });
+    },
   });
 
   // Form field mutations
@@ -570,6 +652,20 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
               Home Content
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('voting')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'voting'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+            }`}
+            data-testid="tab-voting"
+          >
+            <div className="flex items-center gap-2">
+              <Vote className="w-4 h-4" />
+              Voting
             </div>
           </button>
         </nav>
@@ -1874,6 +1970,157 @@ export default function AdminDashboard() {
         <HomeContentAdmin />
       )}
 
+      {/* Voting Tab */}
+      {activeTab === 'voting' && (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Vote className="w-5 h-5" />
+                Voting Configuration
+              </CardTitle>
+              <CardDescription>
+                Manage voting settings for idea submissions
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {isLoadingVoting ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+              ) : votingSettings ? (
+                <>
+                  {/* Voting Status */}
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">Voting Status</p>
+                        {votingSettings.isOpen === 'true' ? (
+                          <Badge variant="default" className="flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            Open
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            <XCircle className="w-3 h-3" />
+                            Closed
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {votingSettings.isOpen === 'true' 
+                          ? 'Participants can vote on ideas' 
+                          : 'Voting is currently disabled'}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      {votingSettings.isOpen === 'true' ? (
+                        <Button
+                          onClick={() => toggleVotingMutation.mutate(false)}
+                          variant="destructive"
+                          disabled={toggleVotingMutation.isPending}
+                          data-testid="button-close-voting"
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Close Voting
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => toggleVotingMutation.mutate(true)}
+                          disabled={toggleVotingMutation.isPending}
+                          data-testid="button-open-voting"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Open Voting
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Max Votes Setting */}
+                  <div className="space-y-3">
+                    <Label htmlFor="maxVotes">Maximum Votes per Participant</Label>
+                    <div className="flex items-center gap-3">
+                      <Input
+                        id="maxVotes"
+                        type="number"
+                        min="1"
+                        max="20"
+                        defaultValue={votingSettings.maxVotesPerParticipant}
+                        className="w-32"
+                        data-testid="input-max-votes"
+                        onBlur={(e) => {
+                          const newValue = parseInt(e.target.value);
+                          if (newValue !== votingSettings.maxVotesPerParticipant && newValue >= 1 && newValue <= 20) {
+                            updateMaxVotesMutation.mutate(newValue);
+                          }
+                        }}
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        votes per person
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Each participant can distribute this many votes across all ideas
+                    </p>
+                  </div>
+
+                  {/* Voting Timestamps */}
+                  {(votingSettings.startedAt || votingSettings.closedAt) && (
+                    <div className="space-y-2 p-3 bg-muted rounded-lg">
+                      {votingSettings.startedAt && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Clock className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">Opened:</span>
+                          <span>{new Date(votingSettings.startedAt).toLocaleString()}</span>
+                        </div>
+                      )}
+                      {votingSettings.closedAt && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Clock className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">Closed:</span>
+                          <span>{new Date(votingSettings.closedAt).toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Danger Zone */}
+                  <Separator />
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-destructive">
+                      <AlertCircle className="w-5 h-5" />
+                      <h3 className="font-semibold">Danger Zone</h3>
+                    </div>
+                    <div className="p-4 border border-destructive/50 rounded-lg space-y-3">
+                      <div>
+                        <p className="font-medium">Reset All Votes</p>
+                        <p className="text-sm text-muted-foreground">
+                          This will permanently delete all votes from all participants. This action cannot be undone.
+                        </p>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        onClick={() => setShowResetVotesDialog(true)}
+                        data-testid="button-reset-votes"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Reset All Votes
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>Voting settings not found. Please refresh the page.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Delete All Ideas Confirmation Dialog */}
       <AlertDialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
         <AlertDialogContent data-testid="dialog-delete-all-ideas">
@@ -1915,6 +2162,29 @@ export default function AdminDashboard() {
               data-testid="button-confirm-reset-stats"
             >
               Reset Statistics
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset Votes Confirmation Dialog */}
+      <AlertDialog open={showResetVotesDialog} onOpenChange={setShowResetVotesDialog}>
+        <AlertDialogContent data-testid="dialog-reset-votes">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset All Votes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete all votes 
+              from all participants. Vote counts on all ideas will be reset to zero.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-reset-votes">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => resetVotesMutation.mutate()}
+              className="bg-destructive hover:bg-destructive/90"
+              data-testid="button-confirm-reset-votes"
+            >
+              Reset All Votes
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

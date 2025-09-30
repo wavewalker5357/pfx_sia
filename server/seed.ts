@@ -7,7 +7,8 @@ import {
   headerSettings, 
   kanbanCategories, 
   viewSettings,
-  landingPageSettings
+  landingPageSettings,
+  votingSettings
 } from "@shared/schema";
 
 async function seedDatabase() {
@@ -23,6 +24,7 @@ async function seedDatabase() {
     await db.delete(kanbanCategories);
     await db.delete(viewSettings);
     await db.delete(landingPageSettings);
+    await db.delete(votingSettings);
 
     // Seed Kanban Categories
     console.log("📋 Seeding kanban categories...");
@@ -221,6 +223,13 @@ async function seedDatabase() {
       maintenanceMessage: "The AI Summit platform is currently under construction. Please check back soon!",
       countdownMessage: "Time to start of the Pricefx Product & Engineering Summit",
       summitStartDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+    });
+
+    // Seed Voting Settings
+    console.log("🗳️ Seeding voting settings...");
+    await db.insert(votingSettings).values({
+      isOpen: "false",
+      maxVotesPerParticipant: 5
     });
 
     console.log("✅ Database seeded successfully!");

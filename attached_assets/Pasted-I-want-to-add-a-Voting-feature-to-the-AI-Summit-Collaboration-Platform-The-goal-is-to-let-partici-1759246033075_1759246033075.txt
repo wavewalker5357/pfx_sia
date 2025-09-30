@@ -1,0 +1,40 @@
+I want to add a “Voting” feature to the AI Summit Collaboration Platform. The goal is to let participants vote on submitted ideas in a way that feels similar to EasyRetro.
+
+What the feature should do
+	•	Every participant gets a limited number of votes (e.g., 5) to distribute across ideas on the board.
+	•	They can put multiple votes on one idea if they want, or spread them across different ideas.
+	•	Participants can also remove votes and reallocate them.
+	•	The system should always show them how many votes they still have left.
+	•	Each idea card should show the total votes it has received.
+	•	Organizers (admins) can configure the number of votes per participant and can open or close the voting phase.
+	•	While voting is open, a banner at the top of the board should remind participants how many votes remain.
+	•	When voting is closed, people can still see totals, but they can’t add or remove votes.
+	•	Voting should be possible in both views: board and list view.
+	•	Any user in summit section in both views can sort ideas cards by number of votes or by date.
+	•	The analytics dashboard should also include voting results (top voted ideas, total votes, etc.).
+
+Rules
+	•	A participant cannot exceed their allowed number of votes.
+	•	Votes should be tied to a session ID, so if someone refreshes their browser, they keep their votes.
+	•	Admin-only controls should stay hidden for attendees.
+	•	Everything should match our current design system (light/dark mode, buttons, clean layout).
+
+Acceptance criteria
+	•	As a participant, I can give votes to ideas, see the total update immediately, and see my remaining votes update.
+	•	As a participant, if I try to vote more than allowed, I get a friendly message (not a crash).
+	•	As a participant, I can remove votes I already cast and reuse them.
+	•	As an organizer, I can turn voting on/off and change the maximum votes per person in the admin panel.
+	•	As an organizer, I can see which ideas have the most votes in the analytics dashboard.
+	•	The app should stay smooth, responsive, and bug-free.
+
+Important
+	•	Keep it simple and consistent with the rest of the app.
+	•	Don’t break existing features.
+	•	Make sure voting feels fast and updates in real time (at least with regular refresh/polling).
+	•	Build it so we can expand later if we want more advanced voting phases.
+
+⸻
+
+👉 This is essentially the “product spec” version of the same instructions: it tells the AI what outcome we want and why, leaving the how flexible.
+
+Do you want me to also draft a shorter, 3–4 sentence “executive style” prompt that focuses only on the vision (so the AI fills in all the details)?

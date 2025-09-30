@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -12,11 +12,13 @@ export const ideas = pgTable("ideas", {
   component: text("component").notNull(),
   tag: text("tag").notNull(),
   type: text("type").notNull(), // AI Story, AI Idea, AI Solution
+  totalVotes: integer("total_votes").notNull().default(0), // Denormalized vote count for performance
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertIdeaSchema = createInsertSchema(ideas).omit({
   id: true,
+  totalVotes: true,
   createdAt: true,
 });
 
@@ -264,3 +266,42 @@ export const insertStatisticsStateSchema = createInsertSchema(statisticsState).o
 
 export type InsertStatisticsState = z.infer<typeof insertStatisticsStateSchema>;
 export type StatisticsState = typeof statisticsState.$inferSelect;
+
+// Votes schema for tracking participant votes on ideas
+export const votes = pgTable("votes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ideaId: varchar("idea_id").notNull(), // Foreign key to ideas
+  sessionId: varchar("session_id").notNull(), // Participant identifier (from localStorage)
+  voteCount: integer("vote_count").notNull().default(1), // Number of votes on this idea
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertVoteSchema = createInsertSchema(votes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertVote = z.infer<typeof insertVoteSchema>;
+export type Vote = typeof votes.$inferSelect;
+
+// Voting settings schema for controlling voting feature
+export const votingSettings = pgTable("voting_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  isOpen: varchar("is_open").notNull().default("false"), // Voting enabled/disabled
+  maxVotesPerParticipant: integer("max_votes_per_participant").notNull().default(5), // Vote limit
+  startedAt: timestamp("started_at"), // When voting was opened (nullable)
+  closedAt: timestamp("closed_at"), // When voting was closed (nullable)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertVotingSettingsSchema = createInsertSchema(votingSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertVotingSettings = z.infer<typeof insertVotingSettingsSchema>;
+export type VotingSettings = typeof votingSettings.$inferSelect;
