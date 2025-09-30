@@ -3,19 +3,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Calendar, Tag, User } from 'lucide-react';
+import { Plus, Calendar, Tag, User, ThumbsUp, Minus } from 'lucide-react';
 import type { Idea, IdeaWithFields, KanbanCategory } from '@shared/schema';
 import { useState, useRef, useEffect } from 'react';
 import { apiRequest } from '@/lib/queryClient';
+import { useVoting } from '@/hooks/useVoting';
+import type { SortBy } from './IdeaBrowser';
 
 interface IdeaBoardProps {
   searchTerm?: string;
   componentFilter?: string;
   tagFilter?: string;
+  sortBy?: SortBy;
   onNavigateToSubmit?: () => void;
 }
 
-export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFilter = '', onNavigateToSubmit }: IdeaBoardProps) {
+export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFilter = '', sortBy = 'date-desc', onNavigateToSubmit }: IdeaBoardProps) {
+  const { isVotingOpen, getMyVotesForIdea, canVote, vote, isVoting } = useVoting();
   const queryClient = useQueryClient();
   const [draggedIdea, setDraggedIdea] = useState<IdeaWithFields | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
@@ -103,10 +107,27 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
     return matchesSearch && matchesComponent && matchesTag;
   });
 
-  // Group ideas by category
+  // Group ideas by category and sort within each category
   const activeCategories = categories.filter(cat => cat.isActive === 'true').sort((a, b) => parseInt(a.order) - parseInt(b.order));
   const ideaGroups = activeCategories.reduce((acc, category) => {
-    acc[category.key] = filteredIdeas.filter(idea => idea.type === category.key);
+    const categoryIdeas = filteredIdeas.filter(idea => idea.type === category.key);
+    
+    // Sort ideas within this category
+    const sortedCategoryIdeas = [...categoryIdeas].sort((a, b) => {
+      switch (sortBy) {
+        case 'votes-desc':
+          return (b.totalVotes || 0) - (a.totalVotes || 0);
+        case 'votes-asc':
+          return (a.totalVotes || 0) - (b.totalVotes || 0);
+        case 'date-asc':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'date-desc':
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+    
+    acc[category.key] = sortedCategoryIdeas;
     return acc;
   }, {} as Record<string, IdeaWithFields[]>);
 
@@ -540,6 +561,47 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
                           <div className="space-y-1">
                             {renderTextareaFields(idea.dynamicFields || [])}
                           </div>
+
+                          {/* Voting Controls */}
+                          {isVotingOpen && (
+                            <div className="flex items-center gap-2 pt-1">
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                onClick={() => vote(idea.id, false)}
+                                disabled={!canVote(idea.id, false) || isVoting}
+                                data-testid={`button-vote-down-board-${idea.id}`}
+                                className="h-7 w-7"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <Badge variant="secondary" className="text-xs px-2" data-testid={`badge-my-votes-board-${idea.id}`}>
+                                <ThumbsUp className="h-2.5 w-2.5 mr-1" />
+                                {getMyVotesForIdea(idea.id)}
+                              </Badge>
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                onClick={() => vote(idea.id, true)}
+                                disabled={!canVote(idea.id, true) || isVoting}
+                                data-testid={`button-vote-up-board-${idea.id}`}
+                                className="h-7 w-7"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                              <span className="text-xs text-muted-foreground">
+                                Total: <span className="font-semibold" data-testid={`text-total-votes-board-${idea.id}`}>{idea.totalVotes || 0}</span>
+                              </span>
+                            </div>
+                          )}
+                          {!isVotingOpen && idea.totalVotes !== undefined && idea.totalVotes > 0 && (
+                            <div className="pt-1">
+                              <Badge variant="outline" className="text-xs" data-testid={`badge-votes-closed-board-${idea.id}`}>
+                                <ThumbsUp className="h-2.5 w-2.5 mr-1" />
+                                {idea.totalVotes} vote{idea.totalVotes !== 1 ? 's' : ''}
+                              </Badge>
+                            </div>
+                          )}
 
                           {/* Created Date */}
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
