@@ -648,10 +648,14 @@ export default function AdminDashboard() {
             ) : (
               (() => {
                 const hourlyData = statistics?.hourlySubmissions ?? [];
-                const chartData = hourlyData.map(item => ({
-                  ...item,
-                  label: new Date(item.hour.replace(' ', 'T')).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })
-                }));
+                const chartData = hourlyData.map(item => {
+                  // Normalize Postgres timestamp: "2025-01-01 14:00:00+00" -> "2025-01-01T14:00:00+00:00"
+                  const normalized = item.hour.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00');
+                  return {
+                    ...item,
+                    label: new Date(normalized).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })
+                  };
+                });
                 const peakHour = chartData.length > 0 
                   ? chartData.reduce((max, current) => current.submissions > max.submissions ? current : max, chartData[0])
                   : { label: 'N/A', submissions: 0 };
@@ -666,10 +670,14 @@ export default function AdminDashboard() {
           ) : (
             (() => {
               const hourlyData = statistics?.hourlySubmissions ?? [];
-              const chartData = hourlyData.map(item => ({
-                ...item,
-                label: new Date(item.hour.replace(' ', 'T')).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })
-              }));
+              const chartData = hourlyData.map(item => {
+                // Normalize Postgres timestamp: "2025-01-01 14:00:00+00" -> "2025-01-01T14:00:00+00:00"
+                const normalized = item.hour.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00');
+                return {
+                  ...item,
+                  label: new Date(normalized).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })
+                };
+              });
               const peakHour = chartData.length > 0 
                 ? chartData.reduce((max, current) => current.submissions > max.submissions ? current : max, chartData[0])
                 : { label: 'N/A', submissions: 0 };

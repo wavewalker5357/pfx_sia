@@ -42,10 +42,14 @@ export default function AnalyticsDashboard() {
     ? submissionTypes.reduce((max, current) => current.value > max.value ? current : max, submissionTypes[0])
     : { name: 'N/A', value: 0 };
   
-  const hourlyData = (statistics?.hourlySubmissions ?? []).map(item => ({
-    time: new Date(item.hour.replace(' ', 'T')).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true }),
-    submissions: item.submissions
-  }));
+  const hourlyData = (statistics?.hourlySubmissions ?? []).map(item => {
+    // Normalize Postgres timestamp: "2025-01-01 14:00:00+00" -> "2025-01-01T14:00:00+00:00"
+    const normalized = item.hour.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00');
+    return {
+      time: new Date(normalized).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true }),
+      submissions: item.submissions
+    };
+  });
   
   const peakHour = hourlyData.length > 0
     ? hourlyData.reduce((max, current) => current.submissions > max.submissions ? current : max, hourlyData[0])
