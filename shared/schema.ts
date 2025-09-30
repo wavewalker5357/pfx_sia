@@ -69,6 +69,7 @@ export const formFields = pgTable("form_fields", {
   order: varchar("order").notNull().default("0"),
   isActive: varchar("is_active").notNull().default("true"),
   allowUserAdditions: varchar("allow_user_additions").notNull().default("false"), // For list types
+  allowMultiSelect: varchar("allow_multi_select").notNull().default("false"), // For list types - enable multi-select
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
