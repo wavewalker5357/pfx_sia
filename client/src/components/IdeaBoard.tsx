@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Calendar, Tag, User } from 'lucide-react';
 import type { Idea, IdeaWithFields, KanbanCategory } from '@shared/schema';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 
 interface IdeaBoardProps {
@@ -19,7 +19,27 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
   const queryClient = useQueryClient();
   const [draggedIdea, setDraggedIdea] = useState<IdeaWithFields | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const pendingUpdatesRef = useRef<Map<string, { target: string; timeoutId: NodeJS.Timeout }>>(new Map()); // ideaId -> {target, timeoutId}
+  
+  // Detect dark mode
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+    
+    // Check on mount
+    checkDarkMode();
+    
+    // Watch for theme changes
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    
+    return () => observer.disconnect();
+  }, []);
   // Fetch kanban categories
   const { data: categories = [], isLoading: isLoadingCategories, error: categoriesError } = useQuery<KanbanCategory[]>({
     queryKey: ['/api/kanban-categories'],
@@ -91,6 +111,22 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
     return acc;
   }, {} as Record<string, IdeaWithFields[]>);
 
+  // Helper function to get category color for an idea
+  const getCategoryColor = (ideaType: string): string => {
+    const category = categories.find(cat => cat.key === ideaType);
+    return category?.color || '#3b82f6'; // Default blue if not found
+  };
+
+  // Convert hex color to RGBA with opacity (for light mode background tints)
+  const hexToRgba = (hex: string, opacity: number): string => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return `rgba(59, 130, 246, ${opacity})`; // Default blue
+    const r = parseInt(result[1], 16);
+    const g = parseInt(result[2], 16);
+    const b = parseInt(result[3], 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  };
+
   // Mutation for updating idea category with proper cancellation handling
   const updateIdeaCategoryMutation = useMutation({
     mutationFn: async ({ ideaId, newType }: { ideaId: string; newType: string }) => {
@@ -107,7 +143,7 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
   });
 
   // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, idea: Idea) => {
+  const handleDragStart = (e: React.DragEvent, idea: IdeaWithFields) => {
     console.log('🟡 Drag started:', idea.title, 'from category:', idea.type);
     setDraggedIdea(idea);
     e.dataTransfer.effectAllowed = 'move';
@@ -454,6 +490,11 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
                       className={`hover-elevate cursor-grab active:cursor-grabbing transition-all ${
                         draggedIdea?.id === idea.id ? 'opacity-50 rotate-2 scale-95' : ''
                       }`}
+                      style={
+                        !isDarkMode 
+                          ? { backgroundColor: hexToRgba(getCategoryColor(idea.type), 0.08) }
+                          : undefined
+                      }
                       data-testid={`idea-card-${idea.id}`}
                       draggable
                       onDragStart={(e) => handleDragStart(e, idea)}
