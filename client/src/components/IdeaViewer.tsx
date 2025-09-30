@@ -54,8 +54,20 @@ export default function IdeaViewer({ onNavigateToSubmit }: IdeaViewerProps) {
     },
   });
 
-  const uniqueComponents = Array.from(new Set(ideas.map(idea => idea.component).filter(Boolean)));
-  const uniqueTags = Array.from(new Set(ideas.map(idea => idea.tag).filter(Boolean)));
+  // Split comma-separated values for filters
+  const uniqueComponents = Array.from(new Set(
+    ideas
+      .filter(idea => idea.component)
+      .flatMap(idea => idea.component!.split(',').map(c => c.trim()))
+      .filter(c => c)
+  ));
+  
+  const uniqueTags = Array.from(new Set(
+    ideas
+      .filter(idea => idea.tag)
+      .flatMap(idea => idea.tag!.split(',').map(t => t.trim()))
+      .filter(t => t)
+  ));
 
   return (
     <div className="space-y-6">
