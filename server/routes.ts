@@ -793,6 +793,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Statistics API routes
+
+  // GET /api/statistics - Get all statistics
+  app.get("/api/statistics", async (req, res) => {
+    try {
+      const state = await storage.getStatisticsState();
+      const stats = await storage.getStatistics(state.lastResetAt);
+      
+      res.json({
+        ...stats,
+        lastResetAt: state.lastResetAt
+      });
+    } catch (error) {
+      console.error("Error fetching statistics:", error);
+      res.status(500).json({ error: "Failed to fetch statistics" });
+    }
+  });
+
+  // POST /api/statistics/reset - Reset statistics
+  app.post("/api/statistics/reset", async (req, res) => {
+    try {
+      const state = await storage.resetStatistics();
+      res.json({ 
+        message: "Statistics reset successfully",
+        lastResetAt: state.lastResetAt
+      });
+    } catch (error) {
+      console.error("Error resetting statistics:", error);
+      res.status(500).json({ error: "Failed to reset statistics" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
