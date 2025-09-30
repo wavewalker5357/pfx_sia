@@ -74,9 +74,20 @@ export default function IdeaBrowser({
     },
   });
 
-  // Get unique filter options for independent mode
-  const uniqueComponents = Array.from(new Set(ideas.map(idea => idea.component).filter(Boolean)));
-  const uniqueTags = Array.from(new Set(ideas.map(idea => idea.tag).filter(Boolean)));
+  // Get unique filter options for independent mode - split comma-separated values
+  const uniqueComponents = Array.from(new Set(
+    ideas
+      .filter(idea => idea.component)
+      .flatMap(idea => idea.component!.split(',').map(c => c.trim()))
+      .filter(c => c)
+  ));
+  
+  const uniqueTags = Array.from(new Set(
+    ideas
+      .filter(idea => idea.tag)
+      .flatMap(idea => idea.tag!.split(',').map(t => t.trim()))
+      .filter(t => t)
+  ));
 
   // Filter ideas based on search and filter criteria (matching IdeaBoard.tsx exactly)
   const filteredIdeas = ideas.filter(idea => {
@@ -85,8 +96,12 @@ export default function IdeaBrowser({
       idea.description.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
       idea.name.toLowerCase().includes(effectiveSearchTerm.toLowerCase());
     
-    const matchesComponent = !effectiveComponentFilter || idea.component === effectiveComponentFilter;
-    const matchesTag = !effectiveTagFilter || idea.tag === effectiveTagFilter;
+    // Check if filter value exists in comma-separated list
+    const matchesComponent = !effectiveComponentFilter || 
+      (idea.component && idea.component.split(',').map(c => c.trim()).includes(effectiveComponentFilter));
+    
+    const matchesTag = !effectiveTagFilter || 
+      (idea.tag && idea.tag.split(',').map(t => t.trim()).includes(effectiveTagFilter));
     
     return matchesSearch && matchesComponent && matchesTag;
   });

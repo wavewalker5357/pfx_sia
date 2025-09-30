@@ -75,8 +75,11 @@ export default function IdeaBoard({ searchTerm = '', componentFilter = '', tagFi
       idea.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       idea.name.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesComponent = !componentFilter || idea.component === componentFilter;
-    const matchesTag = !tagFilter || idea.tag === tagFilter;
+    // Check if filter value exists in comma-separated list
+    const matchesComponent = !componentFilter || 
+      (idea.component && idea.component.split(',').map(c => c.trim()).includes(componentFilter));
+    const matchesTag = !tagFilter || 
+      (idea.tag && idea.tag.split(',').map(t => t.trim()).includes(tagFilter));
     
     return matchesSearch && matchesComponent && matchesTag;
   });

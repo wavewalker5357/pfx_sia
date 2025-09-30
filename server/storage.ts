@@ -549,16 +549,27 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(sql<number>`COUNT(*)::int`));
     const submissionTypes = submissionTypesResult;
 
-    const componentCountsResult = await db
-      .select({
-        component: ideas.component,
-        count: sql<number>`COUNT(*)::int`
-      })
+    // Get all ideas to split comma-separated component values
+    const allIdeasForComponents = await db
+      .select({ component: ideas.component })
       .from(ideas)
-      .where(gte(ideas.createdAt, lastResetAt))
-      .groupBy(ideas.component)
-      .orderBy(desc(sql<number>`COUNT(*)::int`));
-    const componentCounts = componentCountsResult;
+      .where(gte(ideas.createdAt, lastResetAt));
+    
+    // Split comma-separated components and count individually
+    const componentCountMap = new Map<string, number>();
+    allIdeasForComponents.forEach(idea => {
+      if (idea.component) {
+        // Split by comma and trim whitespace
+        const components = idea.component.split(',').map(c => c.trim()).filter(c => c);
+        components.forEach(component => {
+          componentCountMap.set(component, (componentCountMap.get(component) || 0) + 1);
+        });
+      }
+    });
+    
+    const componentCounts = Array.from(componentCountMap.entries())
+      .map(([component, count]) => ({ component, count }))
+      .sort((a, b) => b.count - a.count);
 
     const topContributorsResult = await db
       .select({
@@ -572,17 +583,28 @@ export class DatabaseStorage implements IStorage {
       .limit(5);
     const topContributors = topContributorsResult;
 
-    const trendingTagsResult = await db
-      .select({
-        tag: ideas.tag,
-        count: sql<number>`COUNT(*)::int`
-      })
+    // Get all ideas to split comma-separated tag values
+    const allIdeasForTags = await db
+      .select({ tag: ideas.tag })
       .from(ideas)
-      .where(gte(ideas.createdAt, lastResetAt))
-      .groupBy(ideas.tag)
-      .orderBy(desc(sql<number>`COUNT(*)::int`))
-      .limit(5);
-    const trendingTags = trendingTagsResult;
+      .where(gte(ideas.createdAt, lastResetAt));
+    
+    // Split comma-separated tags and count individually
+    const tagCountMap = new Map<string, number>();
+    allIdeasForTags.forEach(idea => {
+      if (idea.tag) {
+        // Split by comma and trim whitespace
+        const tags = idea.tag.split(',').map(t => t.trim()).filter(t => t);
+        tags.forEach(tag => {
+          tagCountMap.set(tag, (tagCountMap.get(tag) || 0) + 1);
+        });
+      }
+    });
+    
+    const trendingTags = Array.from(tagCountMap.entries())
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5); // Top 5 trending tags
 
     return {
       totalIdeas,
