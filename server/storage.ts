@@ -21,6 +21,8 @@ import {
   type InsertLandingPageSettings,
   type SummitHomeContent,
   type InsertSummitHomeContent,
+  type StatisticsState,
+  type InsertStatisticsState,
   users,
   ideas,
   summitResources,
@@ -31,10 +33,11 @@ import {
   kanbanCategories,
   viewSettings,
   landingPageSettings,
-  summitHomeContent
+  summitHomeContent,
+  statisticsState
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, gte, sql, and, desc } from "drizzle-orm";
 
 // Storage interface definition
 export interface IStorage {
@@ -105,6 +108,20 @@ export interface IStorage {
   getSummitHomeContent(): Promise<SummitHomeContent | undefined>;
   createSummitHomeContent(content: InsertSummitHomeContent): Promise<SummitHomeContent>;
   updateSummitHomeContent(id: string, updates: Partial<InsertSummitHomeContent>): Promise<SummitHomeContent | undefined>;
+
+  // Statistics State CRUD
+  getStatisticsState(): Promise<StatisticsState>;
+  resetStatistics(): Promise<StatisticsState>;
+  getStatistics(lastResetAt: Date): Promise<{
+    totalIdeas: number;
+    todaySubmissions: number;
+    activeContributors: number;
+    hourlySubmissions: Array<{ hour: string; count: number }>;
+    submissionTypes: Array<{ type: string; count: number }>;
+    componentCounts: Array<{ component: string; count: number }>;
+    topContributors: Array<{ name: string; count: number }>;
+    trendingTags: Array<{ tag: string; count: number }>;
+  }>;
 
   // Additional methods needed by routes
   getIdeasWithFields(): Promise<(Idea & { dynamicFields?: IdeaDynamicField[] })[]>;
@@ -439,6 +456,144 @@ export class DatabaseStorage implements IStorage {
       .where(eq(summitHomeContent.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  // Statistics State CRUD
+  async getStatisticsState(): Promise<StatisticsState> {
+    const [state] = await db.select().from(statisticsState).limit(1);
+    
+    if (!state) {
+      const [newState] = await db
+        .insert(statisticsState)
+        .values({ lastResetAt: new Date() })
+        .returning();
+      return newState;
+    }
+    
+    return state;
+  }
+
+  async resetStatistics(): Promise<StatisticsState> {
+    const currentState = await this.getStatisticsState();
+    const [updated] = await db
+      .update(statisticsState)
+      .set({ lastResetAt: new Date() })
+      .where(eq(statisticsState.id, currentState.id))
+      .returning();
+    return updated;
+  }
+
+  async getStatistics(lastResetAt: Date): Promise<{
+    totalIdeas: number;
+    todaySubmissions: number;
+    activeContributors: number;
+    hourlySubmissions: Array<{ hour: string; count: number }>;
+    submissionTypes: Array<{ type: string; count: number }>;
+    componentCounts: Array<{ component: string; count: number }>;
+    topContributors: Array<{ name: string; count: number }>;
+    trendingTags: Array<{ tag: string; count: number }>;
+  }> {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+    const totalIdeasResult = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(ideas)
+      .where(gte(ideas.createdAt, lastResetAt));
+    const totalIdeas = totalIdeasResult[0]?.count || 0;
+
+    const todaySubmissionsResult = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(ideas)
+      .where(
+        and(
+          gte(ideas.createdAt, lastResetAt),
+          gte(ideas.createdAt, startOfToday)
+        )
+      );
+    const todaySubmissions = todaySubmissionsResult[0]?.count || 0;
+
+    const activeContributorsResult = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${ideas.name})::int` })
+      .from(ideas)
+      .where(gte(ideas.createdAt, lastResetAt));
+    const activeContributors = activeContributorsResult[0]?.count || 0;
+
+    const hourlySubmissionsResult = await db
+      .select({
+        hour: sql<string>`date_trunc('hour', ${ideas.createdAt})::text`,
+        count: sql<number>`COUNT(*)::int`
+      })
+      .from(ideas)
+      .where(
+        and(
+          gte(ideas.createdAt, lastResetAt),
+          gte(ideas.createdAt, twentyFourHoursAgo)
+        )
+      )
+      .groupBy(sql`date_trunc('hour', ${ideas.createdAt})`)
+      .orderBy(sql`date_trunc('hour', ${ideas.createdAt})`);
+    const hourlySubmissions = hourlySubmissionsResult;
+
+    const submissionTypesResult = await db
+      .select({
+        type: ideas.type,
+        count: sql<number>`COUNT(*)::int`
+      })
+      .from(ideas)
+      .where(gte(ideas.createdAt, lastResetAt))
+      .groupBy(ideas.type)
+      .orderBy(desc(sql<number>`COUNT(*)::int`));
+    const submissionTypes = submissionTypesResult;
+
+    const componentCountsResult = await db
+      .select({
+        component: ideas.component,
+        count: sql<number>`COUNT(*)::int`
+      })
+      .from(ideas)
+      .where(gte(ideas.createdAt, lastResetAt))
+      .groupBy(ideas.component)
+      .orderBy(desc(sql<number>`COUNT(*)::int`));
+    const componentCounts = componentCountsResult;
+
+    const topContributorsResult = await db
+      .select({
+        name: ideas.name,
+        count: sql<number>`COUNT(*)::int`
+      })
+      .from(ideas)
+      .where(gte(ideas.createdAt, lastResetAt))
+      .groupBy(ideas.name)
+      .orderBy(desc(sql<number>`COUNT(*)::int`))
+      .limit(5);
+    const topContributors = topContributorsResult;
+
+    const trendingTagsResult = await db
+      .select({
+        tag: ideas.tag,
+        count: sql<number>`COUNT(*)::int`
+      })
+      .from(ideas)
+      .where(gte(ideas.createdAt, lastResetAt))
+      .groupBy(ideas.tag)
+      .orderBy(desc(sql<number>`COUNT(*)::int`))
+      .limit(5);
+    const trendingTags = trendingTagsResult;
+
+    return {
+      totalIdeas,
+      todaySubmissions,
+      activeContributors,
+      hourlySubmissions,
+      submissionTypes,
+      componentCounts,
+      topContributors,
+      trendingTags
+    };
   }
 
   // Additional method needed by routes

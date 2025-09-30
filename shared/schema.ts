@@ -250,3 +250,16 @@ export const insertSummitHomeContentSchema = createInsertSchema(summitHomeConten
 
 export type InsertSummitHomeContent = z.infer<typeof insertSummitHomeContentSchema>;
 export type SummitHomeContent = typeof summitHomeContent.$inferSelect;
+
+// Statistics state schema for tracking when statistics were last reset
+export const statisticsState = pgTable("statistics_state", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  lastResetAt: timestamp("last_reset_at").defaultNow().notNull(),
+});
+
+export const insertStatisticsStateSchema = createInsertSchema(statisticsState).omit({
+  id: true,
+});
+
+export type InsertStatisticsState = z.infer<typeof insertStatisticsStateSchema>;
+export type StatisticsState = typeof statisticsState.$inferSelect;
