@@ -130,11 +130,13 @@ export default function IdeaBrowser({
 
   const formatTime = (dateInput: string | Date) => {
     const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleString('en-US', { 
       month: 'short', 
       day: 'numeric',
-      hour: '2-digit', 
-      minute: '2-digit' 
+      year: 'numeric',
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true
     });
   };
 
