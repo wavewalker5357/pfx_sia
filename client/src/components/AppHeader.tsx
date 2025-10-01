@@ -161,7 +161,7 @@ export function AppHeader({ isAdmin = false }: AppHeaderProps) {
 
   return (
     <header 
-      className={`app-header border-b relative overflow-hidden ${isMobile ? 'is-mobile' : ''} ${isSmallMobile ? 'is-small-mobile' : ''}`}
+      className={`app-header border-b !bg-white dark:!bg-zinc-900 !border-gray-200 dark:!border-zinc-800 relative overflow-hidden ${isMobile ? 'is-mobile' : ''} ${isSmallMobile ? 'is-small-mobile' : ''}`}
       style={{
         backgroundColor: activeSettings.backgroundColor,
         borderColor: activeSettings.borderColor,
