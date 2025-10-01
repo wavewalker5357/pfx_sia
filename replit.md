@@ -61,6 +61,10 @@ Preferred communication style: Simple, everyday language.
 - **Component Library**: Comprehensive set of accessible components built on Radix UI
 - **Responsive Design**: Mobile-first approach with Tailwind breakpoints
 - **Theme Support**: Light/dark mode with CSS custom properties
+  - **Default Theme**: Light mode (ignores browser/OS dark mode preference)
+  - **Theme Toggle**: Manual theme switching via toggle button in header
+  - **Header Theming**: Header background adapts to theme (white in light mode, dark zinc-900 in dark mode)
+  - **Theme Persistence**: User preference saved in localStorage
 
 ### Key Features
 - **Idea Submission**: Structured form with categorization, tagging, and validation
