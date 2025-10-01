@@ -16,9 +16,9 @@ export function AppHeader({ isAdmin = false }: AppHeaderProps) {
   // Default header settings fallback
   const defaultSettings: HeaderSettings = {
     id: "default",
-    attendeeTitle: "AI Summit Ideas",
+    attendeeTitle: "PFX Summit Ideas",
     attendeeSubtitle: "Product & Engineering Summit 2025",
-    adminTitle: "AI Summit Admin",
+    adminTitle: "PFX Summit Admin",
     adminSubtitle: "Platform Management Dashboard",
     summitResourcesLabel: "Summit Resources",
     exitButtonLabel: "Exit",
