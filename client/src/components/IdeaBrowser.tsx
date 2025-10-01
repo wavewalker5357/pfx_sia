@@ -365,8 +365,8 @@ export default function IdeaBrowser({
             <Card key={idea.id} className="hover-elevate" data-testid={`card-idea-${idea.id}`}>
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg mb-2">{idea.title}</CardTitle>
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-lg mb-2 break-words line-clamp-2">{idea.title}</CardTitle>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
                       <User className="w-4 h-4" />
                       <span data-testid={`text-author-${idea.id}`}>{idea.name}</span>
