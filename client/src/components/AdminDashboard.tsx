@@ -490,15 +490,6 @@ export default function AdminDashboard() {
       
       const ideas = await response.json();
       
-      // DIAGNOSTIC: Log the data structure
-      console.log('Export Debug - Total ideas:', ideas.length);
-      if (ideas.length > 0) {
-        console.log('Export Debug - First idea:', ideas[0]);
-        console.log('Export Debug - First idea keys:', Object.keys(ideas[0]));
-        console.log('Export Debug - Title:', ideas[0].title);
-        console.log('Export Debug - Description:', ideas[0].description);
-      }
-      
       // Generate filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const filename = `ideas_export_${timestamp}.${format}`;
