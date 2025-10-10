@@ -538,12 +538,16 @@ export default function AdminDashboard() {
       return 'ID,Name,Title,Description,Component,Tag,Type,Votes,Created At\n';
     }
     
-    // Collect all unique dynamic field names
+    // Collect all unique dynamic field names, excluding Title and Description (they're in main columns)
     const dynamicFieldNames = new Set<string>();
     ideas.forEach(idea => {
       if (idea.dynamicFields) {
         idea.dynamicFields.forEach((field: any) => {
-          dynamicFieldNames.add(field.fieldLabel || field.fieldName || 'Unknown Field');
+          const fieldName = field.fieldLabel || field.fieldName || 'Unknown Field';
+          // Skip Title and Description as they're handled in main columns
+          if (fieldName !== 'Title' && fieldName !== 'Description') {
+            dynamicFieldNames.add(fieldName);
+          }
         });
       }
     });
@@ -575,26 +579,35 @@ export default function AdminDashboard() {
       return str;
     };
     
+    // Helper to get field value from dynamic fields
+    const getDynamicFieldValue = (idea: any, fieldName: string): string => {
+      const field = idea.dynamicFields?.find((f: any) => 
+        (f.fieldLabel || f.fieldName) === fieldName
+      );
+      if (!field) return '';
+      
+      // Handle multi-select fields (array of values)
+      if (Array.isArray(field.value)) {
+        return field.value.join('; ');
+      }
+      return field.value || '';
+    };
+    
     // Create data rows
     const rows = ideas.map(idea => {
+      // Get title and description from dynamic fields if main columns are empty
+      const title = idea.title || getDynamicFieldValue(idea, 'Title');
+      const description = idea.description || getDynamicFieldValue(idea, 'Description');
+      
       const dynamicFieldValues = dynamicFieldsArray.map(fieldName => {
-        const field = idea.dynamicFields?.find((f: any) => 
-          (f.fieldLabel || f.fieldName) === fieldName
-        );
-        if (!field) return '';
-        
-        // Handle multi-select fields (array of values)
-        if (Array.isArray(field.value)) {
-          return field.value.join('; ');
-        }
-        return field.value || '';
+        return getDynamicFieldValue(idea, fieldName);
       });
       
       return [
         idea.id,
         idea.name || '',
-        idea.title,
-        idea.description,
+        title,
+        description,
         idea.component,
         idea.tag,
         idea.type,
