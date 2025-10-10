@@ -645,14 +645,57 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Additional method needed by routes
-  async getIdeasWithFields(): Promise<(Idea & { dynamicFields?: IdeaDynamicField[] })[]> {
+  async getIdeasWithFields(): Promise<(Idea & { dynamicFields?: any[] })[]> {
     const allIdeas = await this.getIdeas();
-    const allDynamicFields = await this.getIdeaDynamicFields();
     
-    return allIdeas.map(idea => ({
-      ...idea,
-      dynamicFields: allDynamicFields.filter(field => field.ideaId === idea.id)
-    }));
+    // Fetch dynamic fields with their form field labels
+    const dynamicFieldsWithLabels = await db
+      .select({
+        id: ideaDynamicFields.id,
+        ideaId: ideaDynamicFields.ideaId,
+        fieldId: ideaDynamicFields.fieldId,
+        value: ideaDynamicFields.value,
+        createdAt: ideaDynamicFields.createdAt,
+        fieldName: formFields.name,
+        fieldLabel: formFields.label,
+        allowMultiSelect: formFields.allowMultiSelect,
+      })
+      .from(ideaDynamicFields)
+      .leftJoin(formFields, eq(ideaDynamicFields.fieldId, formFields.id));
+    
+    return allIdeas.map(idea => {
+      const ideaFields = dynamicFieldsWithLabels.filter(field => field.ideaId === idea.id);
+      
+      // Group multi-select fields into arrays
+      const groupedFields = new Map<string, any>();
+      
+      ideaFields.forEach(field => {
+        const key = field.fieldId;
+        
+        if (!groupedFields.has(key)) {
+          groupedFields.set(key, {
+            id: field.id,
+            ideaId: field.ideaId,
+            fieldId: field.fieldId,
+            fieldName: field.fieldName,
+            fieldLabel: field.fieldLabel,
+            value: field.allowMultiSelect === 'true' ? [field.value] : field.value,
+            createdAt: field.createdAt,
+          });
+        } else {
+          // Add to array for multi-select
+          const existing = groupedFields.get(key);
+          if (Array.isArray(existing.value)) {
+            existing.value.push(field.value);
+          }
+        }
+      });
+      
+      return {
+        ...idea,
+        dynamicFields: Array.from(groupedFields.values())
+      };
+    });
   }
 
   // Voting Settings CRUD
