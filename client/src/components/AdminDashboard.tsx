@@ -479,17 +479,132 @@ export default function AdminDashboard() {
   const handleExport = async (format: 'csv' | 'json') => {
     setIsExporting(true);
     try {
-      console.log(`Exporting data in ${format} format`);
-      // TODO: Replace with actual export functionality
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Fetch all ideas with dynamic fields
+      const response = await fetch('/api/ideas', {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch ideas for export');
+      }
+      
+      const ideas = await response.json();
+      
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const filename = `ideas_export_${timestamp}.${format}`;
+      
+      let content: string;
+      let mimeType: string;
+      
+      if (format === 'csv') {
+        content = exportToCSV(ideas);
+        mimeType = 'text/csv;charset=utf-8;';
+      } else {
+        content = JSON.stringify(ideas, null, 2);
+        mimeType = 'application/json;charset=utf-8;';
+      }
+      
+      // Create and trigger download
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       
       toast({
         title: "Export successful",
-        description: `Ideas exported in ${format.toUpperCase()} format.`,
+        description: `Ideas exported in ${format.toUpperCase()} format as ${filename}.`,
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export failed",
+        description: error instanceof Error ? error.message : "Failed to export data",
+        variant: "destructive",
       });
     } finally {
       setIsExporting(false);
     }
+  };
+  
+  // Helper function to convert ideas to CSV format
+  const exportToCSV = (ideas: any[]) => {
+    if (ideas.length === 0) {
+      return 'ID,Name,Title,Description,Component,Tag,Type,Votes,Created At\n';
+    }
+    
+    // Collect all unique dynamic field names
+    const dynamicFieldNames = new Set<string>();
+    ideas.forEach(idea => {
+      if (idea.dynamicFields) {
+        idea.dynamicFields.forEach((field: any) => {
+          dynamicFieldNames.add(field.fieldLabel || field.fieldName || 'Unknown Field');
+        });
+      }
+    });
+    
+    const dynamicFieldsArray = Array.from(dynamicFieldNames).sort();
+    
+    // Create header row
+    const headers = [
+      'ID',
+      'Name',
+      'Title',
+      'Description',
+      'Component',
+      'Tag',
+      'Type',
+      'Votes',
+      'Created At',
+      ...dynamicFieldsArray
+    ];
+    
+    // Helper to escape CSV values
+    const escapeCSV = (value: any): string => {
+      if (value === null || value === undefined) return '';
+      const str = String(value);
+      // Escape quotes and wrap in quotes if contains comma, newline, or quote
+      if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+    
+    // Create data rows
+    const rows = ideas.map(idea => {
+      const dynamicFieldValues = dynamicFieldsArray.map(fieldName => {
+        const field = idea.dynamicFields?.find((f: any) => 
+          (f.fieldLabel || f.fieldName) === fieldName
+        );
+        if (!field) return '';
+        
+        // Handle multi-select fields (array of values)
+        if (Array.isArray(field.value)) {
+          return field.value.join('; ');
+        }
+        return field.value || '';
+      });
+      
+      return [
+        idea.id,
+        idea.name || '',
+        idea.title,
+        idea.description,
+        idea.component,
+        idea.tag,
+        idea.type,
+        idea.totalVotes || 0,
+        idea.createdAt || '',
+        ...dynamicFieldValues
+      ].map(escapeCSV).join(',');
+    });
+    
+    return [headers.map(escapeCSV).join(','), ...rows].join('\n');
   };
 
   const handleBulkDelete = () => {
